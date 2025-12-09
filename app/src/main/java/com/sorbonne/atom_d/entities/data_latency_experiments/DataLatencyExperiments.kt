@@ -4,7 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "data_file_experiments")
+@Entity(tableName = "data_latency_experiments")
 data class DataLatencyExperiments(
 
     @PrimaryKey(autoGenerate = true)

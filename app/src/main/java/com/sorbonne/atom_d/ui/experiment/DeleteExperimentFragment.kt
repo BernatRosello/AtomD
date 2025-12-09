@@ -15,6 +15,7 @@ import com.sorbonne.atom_d.entities.custom_queries.CustomQueriesDao
 import com.sorbonne.atom_d.tools.CustomRecyclerView
 import com.sorbonne.atom_d.tools.MyAlertDialog
 import com.sorbonne.atom_d.view_holders.DoubleColumnViewHolder
+import kotlin.math.exp
 
 class DeleteExperimentFragment : Fragment()  {
 
@@ -79,6 +80,8 @@ class DeleteExperimentFragment : Fragment()  {
 
                             "DISCOVERY" ->
                                 viewModel.deleteConnectionAttempts(experimentName)
+                            "LATENCY" ->
+                                viewModel.deleteLatencyExperiment(experimentName)
                         }
                     }
                 )

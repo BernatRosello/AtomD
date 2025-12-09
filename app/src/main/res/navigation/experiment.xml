@@ -42,9 +42,9 @@
         tools:layout="@layout/fragment_file_parameters" />
     <fragment
         android:id="@+id/latencyParametersFragment"
-        android:name="com.sorbonne.atom_d.ui.experiment.FileParametersFragment"
+        android:name="com.sorbonne.atom_d.ui.experiment.LatencyParametersFragment"
         android:label="fragment_latency_parameters"
-        tools:layout="@layout/fragment_file_parameters" />
+        tools:layout="@layout/fragment_latency_parameters" />
     <fragment
         android:id="@+id/connectionAttemptsFragment"
         android:name="com.sorbonne.atom_d.ui.experiment.ConnectionAttemptsFragment"

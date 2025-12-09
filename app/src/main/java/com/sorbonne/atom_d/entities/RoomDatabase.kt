@@ -12,6 +12,7 @@ import com.sorbonne.atom_d.entities.data_connection_attempts.DataConnectionAttem
 import com.sorbonne.atom_d.entities.data_connection_attempts.DataConnectionAttemptsDao
 import com.sorbonne.atom_d.entities.data_file_experiments.DataFileExperiments
 import com.sorbonne.atom_d.entities.data_file_experiments.DataFileExperimentsDao
+import com.sorbonne.atom_d.entities.data_latency_experiments.DataLatencyExperiments
 import com.sorbonne.atom_d.entities.data_latency_experiments.DataLatencyExperimentsDao
 import com.sorbonne.atom_d.entities.file_experiments.FileExperiments
 import com.sorbonne.atom_d.entities.file_experiments.FileExperimentsDao
@@ -24,7 +25,8 @@ import com.sorbonne.atom_d.entities.latency_experiments.LatencyExperimentsDao
     DataFileExperiments::class,
     ConnectionAttempts::class,
     DataConnectionAttempts::class,
-    LatencyExperiments::class
+    LatencyExperiments::class,
+    DataLatencyExperiments::class
 ], version = 2)
 
 abstract class RoomDatabase: androidx.room.RoomDatabase() {

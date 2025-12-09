@@ -47,69 +47,58 @@ class LatencyParametersFragment : Fragment() {
         val submitButton = view.findViewById<Button>(R.id.Latency_Experiment_Submit)
 
         // -----------------------------------------------------
-        // RecyclerView
+        // RecyclerView (existing latency experiments)
         // -----------------------------------------------------
-        val latencyAdapter = EntityAdapterSingleColumn(
-            SingleColumnViewHolder.SingleColumnType.TextView,
-            AdapterType.LatencyExperiments
-        )
 
+        val latencyExperimentsAdapter = EntityAdapterSingleColumn(SingleColumnViewHolder.SingleColumnType.TextView, AdapterType.LatencyExperiments)
         CustomRecyclerView(
             requireContext(),
             view.findViewById(R.id.Latency_Experiment_RecyclerView),
-            latencyAdapter,
+            latencyExperimentsAdapter,
             CustomRecyclerView.CustomLayoutManager.LINEAR_LAYOUT
         ).getRecyclerView()
-
-        viewModel.getAllLatencyExperiments().observe(requireActivity(), latencyAdapter::submitList)
+        viewModel.getAllLatencyExperiments().observe(requireActivity(), latencyExperimentsAdapter::submitList)
 
         // -----------------------------------------------------
-        // Custom name enable / disable
+        // Enable/Disable custom name input
         // -----------------------------------------------------
         customName.setOnClickListener {
             experimentName.isEnabled = customName.isChecked
         }
 
         // -----------------------------------------------------
-        // Submit button logic
+        // Submit logic
         // -----------------------------------------------------
         submitButton.setOnClickListener {
 
-            var newLatencyExperiment: LatencyExperiments? = null
-
-            // Number of tries (optional)
             var mTries = 1
             if (experimentTries.text.isNotEmpty()) {
-                mTries = try {
-                    experimentTries.text.toString().toInt()
-                } catch (e: NumberFormatException) {
-                    1
-                }
+                mTries = experimentTries.text.toString().toIntOrNull() ?: 1
             }
             if (mTries <= 0) mTries = 1
 
-            // Name
-            val mName: String = if (customName.isChecked && experimentName.text.isNotEmpty()) {
+            // Automatic or custom name
+            val experimentTitle: String = if (customName.isChecked &&
+                experimentName.text.isNotEmpty()
+            ) {
                 experimentName.text.toString()
             } else {
                 "Latency experiment - N $mTries"
             }
 
-            // Create DB Entity (internal latency fields are NOT set here)
-            newLatencyExperiment = LatencyExperiments(
+            // Create unmeasured latency experiment
+            val latencyExperiment = LatencyExperiments(
                 id = 0,
-                expName = mName,
+                expName = experimentTitle,
                 tries = mTries,
-                // Latency measurements happen later
                 avgLatency = 0.0,
                 minLatency = 0.0,
                 maxLatency = 0.0,
                 sdLatency = 0.0
             )
 
-            // Insert into DB
             try {
-                viewModel.insertLatencyExperiment(newLatencyExperiment)
+                viewModel.insertLatencyExperiment(latencyExperiment)
 
                 // Reset UI
                 experimentName.setText("")

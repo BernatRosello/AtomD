@@ -8,7 +8,10 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "latency_experiments",
     indices = [
-        Index(value = ["experiment_name"], unique = false)
+        Index(
+            value = ["experiment_name"],
+            unique = true
+        )
     ]
 )
 data class LatencyExperiments(

@@ -124,19 +124,19 @@ class D2DSDK {
 
                                 val startTime = latencyTimings[key]
                                 if (startTime != null) {
-                                    val latencyNs = System.nanoTime() - startTime
+                                    val latency = System.nanoTime() - startTime
 
                                     // store
-                                    latencyValues.getOrPut(deviceId) { mutableListOf() }.add(latencyNs)
+                                    latencyValues.getOrPut(deviceId) { mutableListOf() }.add(latency)
                                     latencyRepetitions[deviceId] = repetition + 1
 
                                     // realtime UI update
-                                    viewModel.discoveryTaskValue.value = taskValue(
+                                    viewModel.latencyTaskValue.value = taskValue(
                                         "running",
                                         JSONObject()
                                             .put("endPointId", deviceId)
                                             .put("repetition", repetition)
-                                            .put("latencyNs", latencyNs)
+                                            .put("latency", latency)
                                     )
 
                                     checkLatencyExperimentCompletion()
@@ -718,7 +718,7 @@ class D2DSDK {
         return isDiscoveringAdvertising
     }
 
-    private fun sendBytes(
+    private fun sendBytesToDevice(
         endPointId: String,
         tag: Byte,
         messageType: Byte,
@@ -775,7 +775,7 @@ class D2DSDK {
             results.put(device, computeLatencyStats(values))
         }
 
-        viewModel.discoveryTaskValue.value = taskValue(
+        viewModel.latencyTaskValue.value = taskValue(
             "finished",
             JSONObject()
                 .put("experimentType", "latency")
@@ -857,7 +857,7 @@ class D2DSDK {
                     .put("repetition", rep)
                     .put("timing", startNs)
 
-                sendBytes(
+                sendBytesToDevice(
                     endPointId,
                     tag,
                     MessageBytes.INFO_PACKET,
@@ -881,7 +881,7 @@ class D2DSDK {
             .put("repetition", repetition)
             .put("timing", startTime)
 
-        sendBytes(endPointId, tag, MessageBytes.INFO_PACKET, payload.toString().toByteArray())
+        sendBytesToDevice(endPointId, tag, MessageBytes.INFO_PACKET, payload.toString().toByteArray())
     }
 
     fun disconnectFromDevice(endPointId: String){

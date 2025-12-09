@@ -93,26 +93,41 @@ interface CustomQueriesDao {
 
 
     @Query(
-        ("SELECT " +
-                "   experiment_name, " +
-                "   \"CHUNK\" AS type," +
-                "   message_attempts AS attempts, " +
-                "   message_size as size " +
-                "FROM chunk_experiments " +
-                "   UNION " +
-                "SELECT " +
-                "   experiment_name, " +
-                "   \"FILE\"  AS type," +
-                "   number_of_tries AS attempts, " +
-                "   file_size as size " +
-                "FROM file_experiments" +
-                "   UNION " +
-                "SELECT " +
-                "   experiment_name," +
-                "   \"DISCOVERY\" AS type, " +
-                "   number_of_repetitions AS attempts," +
-                "   0 AS size " +
-                "FROM connection_attempts")
+        """
+    SELECT 
+        experiment_name,
+        'CHUNK' AS type,
+        message_attempts AS attempts,
+        message_size AS size
+    FROM chunk_experiments
+
+    UNION
+
+    SELECT 
+        experiment_name,
+        'FILE' AS type,
+        number_of_tries AS attempts,
+        file_size AS size
+    FROM file_experiments
+
+    UNION
+
+    SELECT
+        experiment_name,
+        'DISCOVERY' AS type,
+        number_of_repetitions AS attempts,
+        0 AS size
+    FROM connection_attempts
+    
+    UNION
+    
+    SELECT
+        experiment_name,
+        'LATENCY' AS type,
+        tries AS attempts,
+        0 AS size
+    FROM latency_experiments
+    """
     )
     fun getAllExperimentsName(): LiveData<List<AllExperimentsName>>
 

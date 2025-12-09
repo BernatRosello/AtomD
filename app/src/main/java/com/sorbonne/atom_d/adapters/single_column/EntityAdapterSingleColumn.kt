@@ -7,6 +7,7 @@ import com.sorbonne.atom_d.adapters.AdapterType
 import com.sorbonne.atom_d.entities.chunk_experiments.ChunkExperiments
 import com.sorbonne.atom_d.entities.connections_attempts.ConnectionAttempts
 import com.sorbonne.atom_d.entities.file_experiments.FileExperiments
+import com.sorbonne.atom_d.entities.latency_experiments.LatencyExperiments
 import com.sorbonne.atom_d.view_holders.SingleColumnViewHolder
 
 
@@ -33,6 +34,8 @@ class EntityAdapterSingleColumn(
                 holder.bind((current as FileExperiments).expName, singleColumnType)
             AdapterType.ConnectionAttempts ->
                 holder.bind((current as ConnectionAttempts).expName, singleColumnType)
+            AdapterType.LatencyExperiments ->
+                holder.bind((current as LatencyExperiments).expName, singleColumnType)
             else -> {}
         }
     }

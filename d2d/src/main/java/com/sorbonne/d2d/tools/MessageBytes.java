@@ -7,6 +7,7 @@ public class MessageBytes {
     public static byte ECHO_REQUEST = (byte) 0x80;
     public static byte INFO_PACKET = (byte) 0x81;
     public static byte INFO_FILE = (byte) 0x82;
+    public static byte INFO_PING = (byte) 0x83;
 
 
     private byte type;
