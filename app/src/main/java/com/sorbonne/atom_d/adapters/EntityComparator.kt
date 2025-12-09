@@ -5,12 +5,14 @@ import com.sorbonne.atom_d.entities.chunk_experiments.ChunkExperiments
 import com.sorbonne.atom_d.entities.connections_attempts.ConnectionAttempts
 import com.sorbonne.atom_d.entities.custom_queries.CustomQueriesDao
 import com.sorbonne.atom_d.entities.file_experiments.FileExperiments
+import com.sorbonne.atom_d.entities.latency_experiments.LatencyExperiments
 
 enum class AdapterType {
     ChunkExperiments,
     FileExperiments,
     ConnectionAttempts,
     CustomQueries,
+    LatencyExperiments,
     DynamicList
 }
 
@@ -27,6 +29,8 @@ class EntityComparator(private val adapterType: AdapterType) : DiffUtil.ItemCall
                 (oldItem as FileExperiments).expName == (newItem as FileExperiments).expName
             AdapterType.ConnectionAttempts ->
                 (oldItem as ConnectionAttempts).expName == (newItem as ConnectionAttempts).expName
+            AdapterType.LatencyExperiments ->
+                (oldItem as LatencyExperiments).expName == (newItem as LatencyExperiments).expName
             AdapterType.CustomQueries ->
                 (oldItem as CustomQueriesDao.AllExperimentsName).experiment_name == (newItem as CustomQueriesDao.AllExperimentsName).experiment_name
             else -> {

@@ -27,6 +27,7 @@ import com.sorbonne.atom_d.entities.connections_attempts.ConnectionAttempts
 import com.sorbonne.atom_d.entities.custom_queries.CustomQueriesDao
 import com.sorbonne.atom_d.entities.data_connection_attempts.DataConnectionAttempts
 import com.sorbonne.atom_d.entities.data_file_experiments.DataFileExperiments
+import com.sorbonne.atom_d.entities.data_latency_experiments.DataLatencyExperiments
 import com.sorbonne.atom_d.entities.file_experiments.FileExperiments
 import com.sorbonne.atom_d.guard
 import com.sorbonne.atom_d.tools.CustomRecyclerView
@@ -41,7 +42,6 @@ import com.sorbonne.d2d.tools.MessageBytes
 import org.json.JSONObject
 import java.io.File
 import java.io.RandomAccessFile
-import java.util.*
 
 
 class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
@@ -299,6 +299,49 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                             viewModel.instance?.notifyToConnectedDevice(endPointId, MessageTag.D2D_PERFORMANCE,notificationParameters){}
                         }
                     }
+                    "LATENCY" -> {
+
+                        MyAlertDialog.showDialog(
+                            parentFragmentManager,
+                            TAG!!,
+                            MyAlertDialog.MessageType.ALERT_INPUT_RECYCLE_VIEW,
+                            R.drawable.ic_alert_dialog_info_24,
+                            "Connected Devices",
+                            null,
+                            R.layout.dialog_recycleview,
+                            adapterDoubleColumn = adapterConnectedDevices,
+                            option1 = fun (recycleViewAdapter){
+
+                                recycleViewAdapter as AdapterDoubleColumn
+                                val targets = recycleViewAdapter.getCheckedBoxes()
+
+                                if(targets.isEmpty()){
+                                    startExperiment.isEnabled = true
+                                    return
+                                }
+
+                                val notificationParameters = JSONObject()
+                                    .put("experimentType", "latency")
+                                    .put("experimentMessageType", "request")
+                                    .put("experimentName", selectedExperiment.experiment_name)
+                                    .put("latencyTries", selectedExperiment.attempts)
+
+                                viewModel.instance?.notifyToSetOfConnectedDevices(
+                                    targets,
+                                    MessageTag.D2D_PERFORMANCE,
+                                    MessageBytes.INFO_PACKET,
+                                    notificationParameters
+                                ){
+                                    viewModel.instance?.performLatencyExperiment(
+                                        targets,
+                                        MessageTag.D2D_PERFORMANCE,
+                                        selectedExperiment.experiment_name,
+                                        selectedExperiment.attempts
+                                    )
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -518,11 +561,66 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                     )
                 )
             }
+            "latency" -> {
+
+                val experimentName = payloadParameters.getString("experimentName")
+                val latencyTries   = payloadParameters.getInt("latencyTries")
+
+                // Store static experiment definition in DB (just like FILE & DISCOVERY)
+                experimentViewModel.insertConnectionAttemptExperiment(
+                    ConnectionAttempts(
+                        0,
+                        experimentName,
+                        latencyTries
+                    )
+                )
+
+                MyAlertDialog.showDialog(
+                    parentFragmentManager,
+                    TAG!!,
+                    MyAlertDialog.MessageType.ALERT_INPUT_RECYCLE_VIEW,
+                    R.drawable.ic_alert_dialog_info_24,
+                    "Connected Devices",
+                    null,
+                    R.layout.dialog_recycleview,
+                    adapterDoubleColumn = adapterConnectedDevices,
+                    option1 = fun (recycleViewAdapter){
+
+                        val checked = (recycleViewAdapter as AdapterDoubleColumn).getCheckedBoxes()
+                        if(checked.isEmpty()){
+                            startExperiment.isEnabled = true
+                            return
+                        }
+
+                        // Notify peers before starting actual experiment
+                        val notifyParameters = JSONObject()
+                            .put("experimentType", "latency")
+                            .put("experimentMessageType", "replay")
+                            .put("experimentName", experimentName)
+                            .put("latencyTries", latencyTries)
+
+                        viewModel.instance?.notifyToSetOfConnectedDevices(
+                            checked,
+                            MessageTag.D2D_PERFORMANCE,
+                            MessageBytes.INFO_PACKET,
+                            notifyParameters
+                        ){
+                            // Begin experiment execution
+                            viewModel.instance?.performLatencyExperiment(
+                                checked,
+                                MessageTag.D2D_PERFORMANCE,
+                                experimentName,
+                                latencyTries
+                            )
+                        }
+                    }
+                )
+            }
         }
     }
 
-    override fun onReceivedTaskResul(from: D2D.ParameterTag, value: JSONObject) {
-        super.onReceivedTaskResul(from, value)
+    override fun onReceivedTaskResult(from: D2D.ParameterTag, value: JSONObject) {
+        super.onReceivedTaskResult(from, value)
         when(from){
             D2D.ParameterTag.FILE->{
                 if(value.getString("experimentState") == "running"){
@@ -589,6 +687,46 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                             experimentValueParameters
                         ) {}
                     }
+                    resetToStandbyStatus()
+                }
+            }
+            D2D.ParameterTag.LATENCY -> {
+                val state = value.getString("experimentState")
+
+                if(state == "running"){
+                    val experimentValueParameters = value.getJSONObject("experimentValueParameters")
+
+                    /* Insert per-attempt latency sample */
+                    viewModel.insertLatencyExperiments(
+                        DataLatencyExperiments(
+                            0,
+                            experimentValueParameters.getLong("experimentId"),
+                            experimentValueParameters.getString("experimentName"),
+                            viewModel.deviceId!!,
+                            experimentValueParameters.getString("targetId"),
+                            experimentValueParameters.getInt("repetition"),
+                            experimentValueParameters.getInt("total_repetitions"),
+                            experimentValueParameters.getDouble("latency"),
+                            readableStrategy
+                        )
+                    )
+                    when(bandwidthInfo[experimentValueParameters.getString("endPointId")]){
+                        BandwidthInfo.Quality.UNKNOWN -> {
+                            bandwidthStatus.setColorFilter(ContextCompat.getColor(requireContext(), R.color.light_grey))
+                        }
+                        BandwidthInfo.Quality.HIGH -> {
+                            bandwidthStatus.setColorFilter(ContextCompat.getColor(requireContext(), R.color.green))
+                        }
+                        BandwidthInfo.Quality.MEDIUM -> {
+                            bandwidthStatus.setColorFilter(ContextCompat.getColor(requireContext(), R.color.yellow))
+                        }
+                        BandwidthInfo.Quality.LOW -> {
+                            bandwidthStatus.setColorFilter(ContextCompat.getColor(requireContext(), R.color.red))
+                        }
+                    }
+                }
+
+                if(state == "finished"){
                     resetToStandbyStatus()
                 }
             }

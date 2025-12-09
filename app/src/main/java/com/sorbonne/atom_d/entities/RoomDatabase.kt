@@ -12,26 +12,32 @@ import com.sorbonne.atom_d.entities.data_connection_attempts.DataConnectionAttem
 import com.sorbonne.atom_d.entities.data_connection_attempts.DataConnectionAttemptsDao
 import com.sorbonne.atom_d.entities.data_file_experiments.DataFileExperiments
 import com.sorbonne.atom_d.entities.data_file_experiments.DataFileExperimentsDao
+import com.sorbonne.atom_d.entities.data_latency_experiments.DataLatencyExperimentsDao
 import com.sorbonne.atom_d.entities.file_experiments.FileExperiments
 import com.sorbonne.atom_d.entities.file_experiments.FileExperimentsDao
+import com.sorbonne.atom_d.entities.latency_experiments.LatencyExperiments
+import com.sorbonne.atom_d.entities.latency_experiments.LatencyExperimentsDao
 
 @Database(entities = [
     ChunkExperiments::class,
     FileExperiments::class,
     DataFileExperiments::class,
     ConnectionAttempts::class,
-    DataConnectionAttempts::class
-], version = 1)
+    DataConnectionAttempts::class,
+    LatencyExperiments::class
+], version = 2)
 
 abstract class RoomDatabase: androidx.room.RoomDatabase() {
 
     abstract fun chunkExperimentsDao(): ChunkExperimentsDao
     abstract fun FileExperimentsDao(): FileExperimentsDao
     abstract fun connectionAttemptsDao(): ConnectionAttemptsDao
+    abstract fun latencyExperimentsDao() : LatencyExperimentsDao
     abstract fun customQueriesDao(): CustomQueriesDao
 
     abstract fun dataFileExperimentsDao(): DataFileExperimentsDao
     abstract fun dataConnectionAttemptsDao(): DataConnectionAttemptsDao
+    abstract fun dataLatencyExperimentsDao(): DataLatencyExperimentsDao
 
     companion object {
         @Volatile

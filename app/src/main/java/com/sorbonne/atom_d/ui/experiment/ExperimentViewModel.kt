@@ -10,13 +10,15 @@ import com.sorbonne.atom_d.entities.chunk_experiments.ChunkExperiments
 import com.sorbonne.atom_d.entities.connections_attempts.ConnectionAttempts
 import com.sorbonne.atom_d.entities.custom_queries.CustomQueriesDao
 import com.sorbonne.atom_d.entities.file_experiments.FileExperiments
+import com.sorbonne.atom_d.entities.latency_experiments.LatencyExperiments     // ✅ NEW IMPORT
 import kotlinx.coroutines.launch
 
 
 class ExperimentViewModel(private val repository: DatabaseRepository) : ViewModel() {
 
-
+    // =========================================================================
     // chunks_experiments
+    // =========================================================================
 
     fun getAllChunks(): LiveData<List<ChunkExperiments>> {
         return repository.getAllChunks()
@@ -26,13 +28,16 @@ class ExperimentViewModel(private val repository: DatabaseRepository) : ViewMode
         repository.insertChunkExperiment(chunkExperiments)
     }
 
-    fun deleteChunkExperiment(name: String) = viewModelScope.launch{
+    fun deleteChunkExperiment(name: String) = viewModelScope.launch {
         repository.deleteChunkExperiment(name)
     }
 
-    // file_experiments
 
-    fun getAllFileExperiments(): LiveData<List<FileExperiments>>{
+    // =========================================================================
+    // file_experiments
+    // =========================================================================
+
+    fun getAllFileExperiments(): LiveData<List<FileExperiments>> {
         return repository.getAllFileExperiments()
     }
 
@@ -44,9 +49,12 @@ class ExperimentViewModel(private val repository: DatabaseRepository) : ViewMode
         repository.deleteFileExperiment(name)
     }
 
-    // connection_attempts
 
-    fun insertConnectionAttemptExperiment(connectionAttempts: ConnectionAttempts) = viewModelScope.launch{
+    // =========================================================================
+    // connection_attempts
+    // =========================================================================
+
+    fun insertConnectionAttemptExperiment(connectionAttempts: ConnectionAttempts) = viewModelScope.launch {
         repository.insertConnectionAttempts(connectionAttempts)
     }
 
@@ -54,16 +62,38 @@ class ExperimentViewModel(private val repository: DatabaseRepository) : ViewMode
         return repository.getAllConnectionAttempts()
     }
 
-    // customs_queries
+    fun deleteConnectionAttempts(experimentName: String) = viewModelScope.launch {
+        repository.deleteConnectionAttempts(experimentName)
+    }
+
+
+    // =========================================================================
+    // latency_experiments   ⭐️ NEW SECTION
+    // =========================================================================
+
+    fun getAllLatencyExperiments(): LiveData<List<LatencyExperiments>> {
+        return repository.getAllLatencyExperiments()
+    }
+
+    fun insertLatencyExperiment(latencyExperiments: LatencyExperiments) = viewModelScope.launch {
+        repository.insertLatencyExperiment(latencyExperiments)
+    }
+
+    fun deleteLatencyExperiment(name: String) = viewModelScope.launch {
+        repository.deleteLatencyExperiment(name)
+    }
+
+
+    // =========================================================================
+    // custom_queries
+    // =========================================================================
 
     fun getAllExperimentsName(): LiveData<List<CustomQueriesDao.AllExperimentsName>> {
         return repository.getAllExperimentsName()
     }
-
-    fun deleteConnectionAttempts(experimentName: String) = viewModelScope.launch{
-        repository.deleteConnectionAttempts(experimentName)
-    }
 }
+
+
 class ExperimentViewModelFactory(private val repository: DatabaseRepository): ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if(modelClass.isAssignableFrom(ExperimentViewModel::class.java)){

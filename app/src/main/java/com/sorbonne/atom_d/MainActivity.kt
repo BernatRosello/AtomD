@@ -1,13 +1,9 @@
 package com.sorbonne.atom_d
 
 import android.annotation.SuppressLint
-import android.content.ComponentName
-import android.content.Intent
-import android.content.ServiceConnection
 import android.location.Location
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
 import android.view.View
@@ -172,11 +168,11 @@ class MainActivity : AppCompatActivity(), D2DListener {
         }
     }
 
-    override fun onReceivedTaskResul(from: D2D.ParameterTag, value: JSONObject) {
-        super.onReceivedTaskResul(from, value)
+    override fun onReceivedTaskResult(from: D2D.ParameterTag, value: JSONObject) {
+        super.onReceivedTaskResult(from, value)
         navHostFragment.childFragmentManager.fragments.forEach{
             try {
-                (it as? DashboardFragment)?.onReceivedTaskResul(from, value)
+                (it as? DashboardFragment)?.onReceivedTaskResult(from, value)
             } catch (e: Exception){
                 e.printStackTrace()
             }

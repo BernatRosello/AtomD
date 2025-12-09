@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">AtomD</string>
+    <string name="experiments_new_latency">new latency</string>
 </resources>

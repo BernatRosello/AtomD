@@ -17,7 +17,8 @@ object D2D {
 
     enum class ParameterTag{
         FILE,
-        DISCOVERY
+        DISCOVERY,
+        LATENCY
     }
 
     class Builder(private val owner: LifecycleOwner, val deviceName: String, val activity: Activity){
@@ -105,6 +106,20 @@ object D2D {
 
     fun performDiscoverAttempts(targetDevice: String, repetitions: Int, isLowPower: Boolean){
         instance.sdk?.performDiscoverAttempts(targetDevice, repetitions, isLowPower)
+    }
+
+    fun performLatencyExperiment(
+        targetDevices: List<String>,
+        tag: Byte,
+        experimentName: String,
+        repetitions: Int
+    ) {
+        instance.sdk?.performLatencyExperiment(
+            targetDevices,
+            tag,
+            experimentName,
+            repetitions
+        )
     }
 
     fun getRequiredPermissions(): List<String>? {

@@ -22,30 +22,44 @@ class ExperimentFragment : Fragment() {
         fun newInstance() = ExperimentFragment()
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-    }
-
     private val viewModel: ExperimentViewModel by viewModels {
         ExperimentViewModelFactory(DatabaseRepository(requireActivity().application))
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        return  inflater.inflate(R.layout.fragment_experiment, container, false)
+        return inflater.inflate(R.layout.fragment_experiment, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // --------------------------------------------------
+        // Existing buttons
+        // --------------------------------------------------
         val toNewChunk = view.findViewById<Button>(R.id.experiment_new_chunk)
         val toNewFile = view.findViewById<Button>(R.id.experiment_new_file)
         val toConnectionAttempt = view.findViewById<Button>(R.id.experiment_new_discover_repetitions)
         val toDeleteExp = view.findViewById<Button>(R.id.experiment_delete_experiment)
 
-        val experimentsAdapter = AdapterDoubleColumn(DoubleColumnViewHolder.DoubleColumnType.TextViewTextView, AdapterType.CustomQueries)
+        // --------------------------------------------------
+        // ⭐️ NEW BUTTON for Latency Experiments
+        // --------------------------------------------------
+        val toNewLatency = view.findViewById<Button>(R.id.experiment_new_latency)
+
+        // --------------------------------------------------
+        // RecyclerView setup (unchanged)
+        // --------------------------------------------------
+        val experimentsAdapter = AdapterDoubleColumn(
+            DoubleColumnViewHolder.DoubleColumnType.TextViewTextView,
+            AdapterType.CustomQueries
+        )
 
         CustomRecyclerView(
             requireContext(),
@@ -56,6 +70,9 @@ class ExperimentFragment : Fragment() {
 
         viewModel.getAllExperimentsName().observe(requireActivity(), experimentsAdapter::submitList)
 
+        // --------------------------------------------------
+        // Existing navigation destinations
+        // --------------------------------------------------
         toNewChunk.setOnClickListener {
             val action: NavDirections =
                 ExperimentFragmentDirections.actionExperimentFragmentToChunksMessageFragment()
@@ -77,6 +94,15 @@ class ExperimentFragment : Fragment() {
         toDeleteExp.setOnClickListener {
             val action: NavDirections =
                 ExperimentFragmentDirections.actionExperimentFragmentToDeleteExperimentFragment()
+            findNavController(view).navigate(action)
+        }
+
+        // --------------------------------------------------
+        // ⭐️ NEW NAVIGATION — Latency Parameters
+        // --------------------------------------------------
+        toNewLatency.setOnClickListener {
+            val action: NavDirections =
+                ExperimentFragmentDirections.actionExperimentFragmentToLatencyParametersFragment()
             findNavController(view).navigate(action)
         }
     }

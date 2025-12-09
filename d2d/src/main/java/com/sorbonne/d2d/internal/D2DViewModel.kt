@@ -23,6 +23,7 @@ class D2DViewModel: ViewModel() {
 
     val fileTransferTaskValue: MutableLiveData<JSONObject> = MutableLiveData()
     val discoveryTaskValue: MutableLiveData<JSONObject> = MutableLiveData()
+    val latencyTaskValue: MutableLiveData<JSONObject> = MutableLiveData()
     val infoPacket: MutableLiveData<MutableMap<Byte, List<String>>> = MutableLiveData()
 
     val lastLocation: MutableLiveData<Location> = MutableLiveData()

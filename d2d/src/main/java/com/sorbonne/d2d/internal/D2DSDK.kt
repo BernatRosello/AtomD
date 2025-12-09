@@ -59,6 +59,7 @@ class D2DSDK {
     private var totalNumberOfTargetDevices: Int = 0
     private var isFileExperiment: Boolean = false
     private var numberOfFileRepetitions = mutableMapOf<String, Int>()
+
     // Discovery_experiment
     private var isDiscoveryExperiment = false
     private var discoveryRepetitions = 0
@@ -66,6 +67,12 @@ class D2DSDK {
 
     //File
     private val listOfFilesIds = mutableListOf<Long>()
+
+    // Latency Experiment
+    private var isLatencyExperiment = false
+    private var latencyRepetitions = mutableMapOf<String, Int>()
+    private val latencyTimings = mutableMapOf<Pair<String,Int>, Long>()
+    private val latencyValues = mutableMapOf<String, MutableList<Long>>()
 
 
     val permissions: List<String> by lazy {
@@ -107,6 +114,34 @@ class D2DSDK {
                         Payload.Type.BYTES -> {
                             val messageBytes = MessageBytes(receivedPayload.asBytes())
                             val translatedPayload = String(messageBytes.payload, StandardCharsets.UTF_8)
+                            // === LATENCY BLOCK ===
+                            if (isLatencyExperiment && messageBytes.type == MessageBytes.INFO_PACKET) {
+
+                                val json = JSONObject(translatedPayload)
+                                val repetition = json.getInt("repetition")
+                                val deviceId = endPointId
+                                val key = deviceId to repetition
+
+                                val startTime = latencyTimings[key]
+                                if (startTime != null) {
+                                    val latencyNs = System.nanoTime() - startTime
+
+                                    // store
+                                    latencyValues.getOrPut(deviceId) { mutableListOf() }.add(latencyNs)
+                                    latencyRepetitions[deviceId] = repetition + 1
+
+                                    // realtime UI update
+                                    viewModel.discoveryTaskValue.value = taskValue(
+                                        "running",
+                                        JSONObject()
+                                            .put("endPointId", deviceId)
+                                            .put("repetition", repetition)
+                                            .put("latencyNs", latencyNs)
+                                    )
+
+                                    checkLatencyExperimentCompletion()
+                                }
+                            }
                             if(messageBytes.type == MessageBytes.INFO_PACKET){
                                 val infoPacket = mutableMapOf<Byte, List<String>>()
                                 infoPacket[messageBytes.tag] =
@@ -409,6 +444,7 @@ class D2DSDK {
         }
     }
 
+
     fun launchSDK(owner: LifecycleOwner, listener: D2DListener?, activity: Activity){
 
         connectionClient = Nearby.getConnectionsClient(activity)
@@ -445,10 +481,13 @@ class D2DSDK {
             listener?.onExperimentProgress(false, taskProgress)
         }
         viewModel.fileTransferTaskValue.observe(owner){ taskValue ->
-            listener?.onReceivedTaskResul(D2D.ParameterTag.FILE, taskValue)
+            listener?.onReceivedTaskResult(D2D.ParameterTag.FILE, taskValue)
         }
         viewModel.discoveryTaskValue.observe(owner){ taskValue ->
-            listener?.onReceivedTaskResul(D2D.ParameterTag.DISCOVERY, taskValue)
+            listener?.onReceivedTaskResult(D2D.ParameterTag.DISCOVERY, taskValue)
+        }
+        viewModel.latencyTaskValue.observe(owner){ taskValue ->
+            listener?.onReceivedTaskResult(D2D.ParameterTag.LATENCY, taskValue)
         }
         viewModel.infoPacket.observe(owner){ infoPacket ->
             infoPacket.entries.forEach{ (entryKey, entryValue) ->
@@ -679,6 +718,76 @@ class D2DSDK {
         return isDiscoveringAdvertising
     }
 
+    private fun sendBytes(
+        endPointId: String,
+        tag: Byte,
+        messageType: Byte,
+        payload: ByteArray
+    ) {
+        val messageBytes = MessageBytes()
+        messageBytes.buildRegularPacket(
+            messageType,
+            tag,
+            payload
+        )
+
+        connectionClient?.sendPayload(
+            endPointId,
+            Payload.fromBytes(messageBytes.buffer)
+        )?.addOnFailureListener { e ->
+            Log.e(TAG, "Latency sendBytes failed: ${e.localizedMessage}")
+        }
+    }
+
+    private fun checkLatencyExperimentCompletion() {
+        val minRep = latencyRepetitions.values.minOrNull() ?: 0
+        val progress = ((minRep.toDouble() / totalNumberOfTask) * 100).toInt()
+
+        viewModel.experimentProgress.value = progress
+
+        if (progress == 100) finalizeLatencyExperiment()
+    }
+
+    private fun computeLatencyStats(list: List<Long>): JSONObject {
+        if (list.isEmpty()) return JSONObject()
+
+        val ms = list.map { it / 1_000_000.0 }
+        val avg = ms.average()
+        val min = ms.minOrNull() ?: avg
+        val max = ms.maxOrNull() ?: avg
+        val sd = kotlin.math.sqrt(
+            ms.sumOf { (it - avg) * (it - avg) } / ms.size
+        )
+
+        return JSONObject()
+            .put("samples", list.size)
+            .put("avgMs", avg)
+            .put("minMs", min)
+            .put("maxMs", max)
+            .put("sdMs", sd)
+    }
+
+    private fun finalizeLatencyExperiment() {
+        isLatencyExperiment = false
+
+        val results = JSONObject()
+        latencyValues.forEach { (device, values) ->
+            results.put(device, computeLatencyStats(values))
+        }
+
+        viewModel.discoveryTaskValue.value = taskValue(
+            "finished",
+            JSONObject()
+                .put("experimentType", "latency")
+                .put("results", results)
+        )
+
+        // cleanup
+        latencyTimings.clear()
+        latencyValues.clear()
+        latencyRepetitions.clear()
+    }
+
     fun sendSetOfChunks(){
 
     }
@@ -717,6 +826,62 @@ class D2DSDK {
         }
         connectedDevices.clear()
         startDiscovery(Strategy.P2P_POINT_TO_POINT, lowPower)
+    }
+
+    fun performLatencyExperiment(
+        targetDevices: List<String>,
+        tag: Byte,
+        experimentName: String,
+        repetitions: Int
+    ) {
+        isLatencyExperiment = true
+        experimentId = System.currentTimeMillis()
+        this.experimentName = experimentName
+        this.totalNumberOfTask = repetitions
+
+        latencyTimings.clear()
+        latencyRepetitions.clear()
+        latencyValues.clear()
+
+        // Init counters
+        targetDevices.forEach { id -> latencyRepetitions[id] = 0 }
+
+        for (rep in 0 until repetitions) {
+            val startNs = System.nanoTime()
+            targetDevices.forEach { endPointId ->
+                latencyTimings[endPointId to rep] = startNs
+
+                val payload = JSONObject()
+                    .put("experimentId", experimentId)
+                    .put("experimentName", experimentName)
+                    .put("repetition", rep)
+                    .put("timing", startNs)
+
+                sendBytes(
+                    endPointId,
+                    tag,
+                    MessageBytes.INFO_PACKET,
+                    payload.toString().toByteArray()
+                )
+            }
+        }
+    }
+
+    private fun sendLatencyPing(
+        endPointId: String,
+        tag: Byte,
+        experimentId: Long,
+        experimentName: String,
+        repetition: Int,
+        startTime: Long
+    ) {
+        val payload = JSONObject()
+            .put("experimentId", experimentId)
+            .put("experimentName", experimentName)
+            .put("repetition", repetition)
+            .put("timing", startTime)
+
+        sendBytes(endPointId, tag, MessageBytes.INFO_PACKET, payload.toString().toByteArray())
     }
 
     fun disconnectFromDevice(endPointId: String){

@@ -11,7 +11,7 @@ interface D2DListener {
     fun onDeviceConnected(isActive: Boolean, endPointInfo: JSONObject){}
     fun onBandwidthQuality(endPointInfo: JSONObject){}
     fun onExperimentProgress(isExperimentBar: Boolean, progression: Int){}
-    fun onReceivedTaskResul(from: D2D.ParameterTag, value: JSONObject){}
+    fun onReceivedTaskResult(from: D2D.ParameterTag, value: JSONObject){}
     fun onInfoPacketReceived(messageTag: Byte,payload: List<String>){}
     fun onLastLocation(location: Location){}
 }

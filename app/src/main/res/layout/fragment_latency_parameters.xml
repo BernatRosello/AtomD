@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.experiment.LatencyParametersFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- RecyclerView of existing latency experiments -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/Latency_Experiment_RecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_margin="20dp"
+            android:background="@drawable/layout_border" />
+
+        <!-- CREATE NEW EXPERIMENT UI -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_margin="20dp"
+            android:background="@drawable/layout_border">
+
+            <!-- Custom Name -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="8dp">
+
+                <CheckBox
+                    android:id="@+id/Latency_Experiment_Custom_Name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Custom Experiment Name" />
+
+                <EditText
+                    android:id="@+id/Latency_Experiment_Name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:enabled="false"
+                    android:hint="Experiment name"
+                    android:inputType="text" />
+            </LinearLayout>
+
+            <!-- Number of tries -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Number of repetitions:"
+                    android:textSize="18sp" />
+
+                <EditText
+                    android:id="@+id/Latency_Experiment_Tries"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:inputType="number"
+                    android:ems="4"
+                    android:hint="1" />
+            </LinearLayout>
+
+            <!-- Submit -->
+            <Button
+                android:id="@+id/Latency_Experiment_Submit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:text="Create Latency Experiment" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

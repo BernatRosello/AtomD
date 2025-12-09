@@ -13,16 +13,23 @@ import com.sorbonne.atom_d.entities.data_file_experiments.DataFileExperiments
 import com.sorbonne.atom_d.entities.data_file_experiments.DataFileExperimentsDao
 import com.sorbonne.atom_d.entities.file_experiments.FileExperiments
 import com.sorbonne.atom_d.entities.file_experiments.FileExperimentsDao
+import com.sorbonne.atom_d.entities.latency_experiments.LatencyExperiments
+import com.sorbonne.atom_d.entities.latency_experiments.LatencyExperimentsDao
+import com.sorbonne.atom_d.entities.data_latency_experiments.DataLatencyExperiments
+import com.sorbonne.atom_d.entities.data_latency_experiments.DataLatencyExperimentsDao
 
 class DatabaseRepository(application: Application){
 
     private var chunkExperimentsDao: ChunkExperimentsDao
     private var fileExperimentsDao: FileExperimentsDao
     private var connectionAttemptsDao: ConnectionAttemptsDao
+    private var latencyExperimentsDao: LatencyExperimentsDao
     private var customQueriesDao: CustomQueriesDao
 
     private var dataFileExperimentsDao: DataFileExperimentsDao
     private var dataConnectionAttemptsDao: DataConnectionAttemptsDao
+    private var dataLatencyExperimentsDao: DataLatencyExperimentsDao
+
 
     init {
         val db = RoomDatabase.getDatabase(application)
@@ -30,10 +37,13 @@ class DatabaseRepository(application: Application){
         chunkExperimentsDao = db.chunkExperimentsDao()
         fileExperimentsDao = db.FileExperimentsDao()
         connectionAttemptsDao = db.connectionAttemptsDao()
+        latencyExperimentsDao = db.latencyExperimentsDao()
         customQueriesDao = db.customQueriesDao()
 
         dataFileExperimentsDao = db.dataFileExperimentsDao()
         dataConnectionAttemptsDao = db.dataConnectionAttemptsDao()
+        dataLatencyExperimentsDao = db.dataLatencyExperimentsDao()
+
     }
 
     /*
@@ -106,7 +116,7 @@ class DatabaseRepository(application: Application){
 
     /*
      * =========================================================================
-     * dataConnectionAttempts
+     * dataFileExperiments
      * =========================================================================
      */
 
@@ -122,5 +132,37 @@ class DatabaseRepository(application: Application){
 
     suspend fun insertDataConnectionAttempts(dataConnectionAttempts: DataConnectionAttempts){
         dataConnectionAttemptsDao.insert(dataConnectionAttempts)
+    }
+
+
+    /*
+     * =========================================================================
+     * Latency Experiments  ✅ NEW SECTION
+     * =========================================================================
+     */
+
+    fun getAllLatencyExperiments(): LiveData<List<LatencyExperiments>> {
+        return latencyExperimentsDao.getAll()
+    }
+
+    suspend fun insertLatencyExperiment(latency: LatencyExperiments) {
+        latencyExperimentsDao.insert(latency)
+    }
+
+    suspend fun deleteLatencyExperiment(name: String) {
+        latencyExperimentsDao.delete(name)
+    }
+
+    suspend fun deleteAllLatencyExperiments() {
+        latencyExperimentsDao.deleteAll()
+    }
+    /*
+     * =========================================================================
+     * dataLatencyExperiments
+     * =========================================================================
+     */
+
+    suspend fun insertDataLatencyExperiments(dataLatencyExperiments: DataLatencyExperiments){
+        dataLatencyExperimentsDao.insert(dataLatencyExperiments)
     }
 }

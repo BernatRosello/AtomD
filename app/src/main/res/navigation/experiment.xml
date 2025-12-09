@@ -22,6 +22,9 @@
         <action
             android:id="@+id/action_experimentFragment_to_fileParametersFragment"
             app:destination="@id/fileParametersFragment" />
+        <action
+            android:id="@+id/action_experimentFragment_to_LatencyParametersFragment"
+            app:destination="@id/latencyParametersFragment" />
     </fragment>
     <fragment
         android:id="@+id/deleteExperimentFragment"
@@ -36,6 +39,11 @@
         android:id="@+id/fileParametersFragment"
         android:name="com.sorbonne.atom_d.ui.experiment.FileParametersFragment"
         android:label="fragment_file_parameters"
+        tools:layout="@layout/fragment_file_parameters" />
+    <fragment
+        android:id="@+id/latencyParametersFragment"
+        android:name="com.sorbonne.atom_d.ui.experiment.FileParametersFragment"
+        android:label="fragment_latency_parameters"
         tools:layout="@layout/fragment_file_parameters" />
     <fragment
         android:id="@+id/connectionAttemptsFragment"
