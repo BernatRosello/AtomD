@@ -29,6 +29,7 @@ import com.sorbonne.atom_d.entities.data_connection_attempts.DataConnectionAttem
 import com.sorbonne.atom_d.entities.data_file_experiments.DataFileExperiments
 import com.sorbonne.atom_d.entities.data_latency_experiments.DataLatencyExperiments
 import com.sorbonne.atom_d.entities.file_experiments.FileExperiments
+import com.sorbonne.atom_d.entities.latency_experiments.LatencyExperiments
 import com.sorbonne.atom_d.guard
 import com.sorbonne.atom_d.tools.CustomRecyclerView
 import com.sorbonne.atom_d.tools.MessageTag
@@ -81,7 +82,6 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
 
     private var isExperimentRunning = false
     private var isValidStrategy = false
-    private var isValidRole = false
 
     private val adapterConnectedDevices = AdapterDoubleColumn(DoubleColumnViewHolder.DoubleColumnType.CheckBoxTextView, AdapterType.DynamicList)
     private val adapterDiscoveredDevices = AdapterDoubleColumn(DoubleColumnViewHolder.DoubleColumnType.RadioButtonTextView, AdapterType.DynamicList)
@@ -322,7 +322,6 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
 
                                 val notificationParameters = JSONObject()
                                     .put("experimentType", "latency")
-                                    .put("experimentMessageType", "request")
                                     .put("experimentName", selectedExperiment.experiment_name)
                                     .put("latencySamples", selectedExperiment.attempts)
 
@@ -567,53 +566,12 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                 val latencySamples   = payloadParameters.getInt("latencySamples")
 
                 // Store static experiment definition in DB (just like FILE & DISCOVERY)
-                experimentViewModel.insertConnectionAttemptExperiment(
-                    ConnectionAttempts(
+                experimentViewModel.insertLatencyExperiment(
+                    LatencyExperiments(
                         0,
                         experimentName,
                         latencySamples
                     )
-                )
-
-                MyAlertDialog.showDialog(
-                    parentFragmentManager,
-                    TAG!!,
-                    MyAlertDialog.MessageType.ALERT_INPUT_RECYCLE_VIEW,
-                    R.drawable.ic_alert_dialog_info_24,
-                    "Connected Devices",
-                    null,
-                    R.layout.dialog_recycleview,
-                    adapterDoubleColumn = adapterConnectedDevices,
-                    option1 = fun (recycleViewAdapter){
-
-                        val checked = (recycleViewAdapter as AdapterDoubleColumn).getCheckedBoxes()
-                        if(checked.isEmpty()){
-                            startExperiment.isEnabled = true
-                            return
-                        }
-
-                        // Notify peers before starting actual experiment
-                        val notifyParameters = JSONObject()
-                            .put("experimentType", "latency")
-                            .put("experimentMessageType", "replay")
-                            .put("experimentName", experimentName)
-                            .put("latencySamples", latencySamples)
-
-                        viewModel.instance?.notifyToSetOfConnectedDevices(
-                            checked,
-                            MessageTag.D2D_PERFORMANCE,
-                            MessageBytes.INFO_PACKET,
-                            notifyParameters
-                        ){
-                            // Begin experiment execution
-                            viewModel.instance?.performLatencyExperiment(
-                                checked,
-                                MessageTag.D2D_PERFORMANCE,
-                                experimentName,
-                                latencySamples
-                            )
-                        }
-                    }
                 )
             }
         }
@@ -695,8 +653,14 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
 
                 if(state == "running"){
                     val experimentValueParameters = value.getJSONObject("experimentValueParameters")
+                    val nSamples = experimentValueParameters.getInt("total_samples")
+                    val jsonSamples = experimentValueParameters.getJSONArray("latency_samples")
+                    val samples = ArrayList<Double>(nSamples)
+                    for (i in 0 until jsonSamples.length()) {
+                        samples.add(jsonSamples.getDouble(i))
+                    }
 
-                    /* Insert per-attempt latency sample */
+                    /* Insert per-device latency sample (these are emitted per-device after testing is completed)*/
                     viewModel.insertLatencyExperiments(
                         DataLatencyExperiments(
                             0,
@@ -704,10 +668,14 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                             experimentValueParameters.getString("experimentName"),
                             viewModel.deviceId!!,
                             experimentValueParameters.getString("targetId"),
-                            experimentValueParameters.getInt("sample"),
-                            experimentValueParameters.getInt("total_samples"),
-                            experimentValueParameters.getDouble("latency"),
-                            readableStrategy
+                            readableStrategy,
+                            nSamples,
+                            samples,
+                            experimentValueParameters.getDouble("average_latency"),
+                            experimentValueParameters.getDouble("minimum_latency"),
+                            experimentValueParameters.getDouble("maximum_latency"),
+                            experimentValueParameters.getDouble("standard_deviation_of_latency")
+
                         )
                     )
                     when(bandwidthInfo[experimentValueParameters.getString("endPointId")]){
@@ -730,7 +698,6 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                     resetToStandbyStatus()
                 }
             }
-            else -> {}
         }
     }
 

@@ -22,18 +22,6 @@ data class LatencyExperiments(
     val expName: String,
 
     @ColumnInfo(name = "samples")
-    val samples: Int,
-
-    @ColumnInfo(name = "average_latency")
-    val avgLatency: Double,
-
-    @ColumnInfo(name = "minimum_latency")
-    val minLatency: Double,
-
-    @ColumnInfo(name = "maximum_latency")
-    val maxLatency: Double,
-
-    @ColumnInfo(name = "standard_deviation_of_latency")
-    val sdLatency: Double
+    val samples: Int
 )
 

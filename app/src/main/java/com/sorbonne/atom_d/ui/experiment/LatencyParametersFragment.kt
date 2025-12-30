@@ -90,11 +90,7 @@ class LatencyParametersFragment : Fragment() {
             val latencyExperiment = LatencyExperiments(
                 id = 0,
                 expName = experimentTitle,
-                samples = mSamples,
-                avgLatency = 0.0,
-                minLatency = 0.0,
-                maxLatency = 0.0,
-                sdLatency = 0.0
+                samples = mSamples
             )
 
             try {

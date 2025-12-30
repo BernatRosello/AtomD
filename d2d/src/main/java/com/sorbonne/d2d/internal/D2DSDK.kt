@@ -23,6 +23,7 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.*
 import java.lang.ref.WeakReference
@@ -76,6 +77,8 @@ class D2DSDK {
     private val latencyTimings = mutableMapOf<Pair<String, Int>, Long>()
     // collected latencies per device (nanoseconds)
     private val latencyValues = mutableMapOf<String, MutableList<Long>>()
+    // Tracks which devices already emitted their final latency metrics
+    private val latencyFinalizedDevices = mutableSetOf<String>()
 
 
     val permissions: List<String> by lazy {
@@ -151,18 +154,9 @@ class D2DSDK {
                                                 val newCount = (latencyRepetitions[endPointId] ?: 0) + 1
                                                 latencyRepetitions[endPointId] = newCount
 
-                                                // realtime UI update (nanoseconds)
-                                                viewModel.latencyTaskValue.value = taskValue(
-                                                    "running",
-                                                    JSONObject()
-                                                        .put("endPointId", endPointId)
-                                                        .put("sample", sampleIndex)
-                                                        .put("latencyNs", latencyNs)
-                                                )
-
                                                 // check completion
-                                                // completion logic: when every device has collected 'totalNumberOfTask' samples
-                                                checkLatencyExperimentCompletionIfNeeded(totalSamples)
+                                                // completion logic: when every device has collected 'totalNumberOfTask' samples and all data has been collected
+                                                recordCompletedExperimentIfFinished(totalSamples)
                                             }
                                             else
                                             {
@@ -750,57 +744,76 @@ class D2DSDK {
         }
     }
 
-    private fun checkLatencyExperimentCompletionIfNeeded(totalSamplesExpected: Int) {
-        // If no devices targeted, nothing to do
+    private fun recordCompletedExperimentIfFinished(totalSamplesExpected: Int) {
         if (!isLatencyExperiment || latencyRepetitions.isEmpty()) return
 
-        // compute min received samples across devices - experiment progresses when the slowest device has X samples
-        val minReceived = latencyRepetitions.values.minOrNull() ?: 0
-
-        // progress as percentage relative to totalSamplesExpected
-        val progress = if (totalSamplesExpected > 0) {
-            ((minReceived.toDouble() / totalSamplesExpected) * 100).toInt()
-        } else 0
-
+        // Progress based on slowest device
+        val minCompletedSamples = latencyRepetitions.values.minOrNull() ?: 0
+        val progress = ((minCompletedSamples.toDouble() / totalSamplesExpected) * 100).toInt()
         viewModel.experimentProgress.value = progress
 
-        if (minReceived >= totalSamplesExpected) {
-            // experiment finished -> finalize results
-            isLatencyExperiment = false
+        // Emit RUNNING exactly ONCE per device
+        latencyRepetitions.forEach { (deviceId, completedSamples) ->
 
-            // build results JSON per device (convert ns -> ms double)
-            val results = JSONObject()
-            latencyValues.forEach { (deviceId, nsList) ->
-                val msList = nsList.map { it / 1_000_000.0 }
-                val tries = msList.size
-                val avg = if (msList.isNotEmpty()) msList.average() else 0.0
-                val min = msList.minOrNull() ?: 0.0
-                val max = msList.maxOrNull() ?: 0.0
-                val sd = if (msList.isNotEmpty()) {
-                    kotlin.math.sqrt(msList.map { (it - avg) * (it - avg) }.sum() / tries)
-                } else 0.0
+            // Already emitted → skip
+            if (latencyFinalizedDevices.contains(deviceId)) return@forEach
 
-                results.put(deviceId, JSONObject()
-                    .put("samples", tries)
-                    .put("avgLatency", avg)
-                    .put("minLatency", min)
-                    .put("maxLatency", max)
-                    .put("sdLatency", sd)
-                )
+            // Not finished yet → skip
+            if (completedSamples < totalSamplesExpected) return@forEach
+
+            val nsSamples = latencyValues[deviceId] ?: return@forEach
+            val msSamples = nsSamples.map { it / 1_000_000.0 }
+
+            val samplesCount = msSamples.size
+            if (samplesCount == 0) return@forEach
+
+            val avg = msSamples.average()
+            val min = msSamples.minOrNull() ?: 0.0
+            val max = msSamples.maxOrNull() ?: 0.0
+            val sd = kotlin.math.sqrt(
+                msSamples.map { (it - avg) * (it - avg) }.sum() / samplesCount
+            )
+
+            val latencySamplesJson = JSONArray()
+            for (sample in msSamples) {
+                latencySamplesJson.put(sample)
             }
 
-            // publish finished result
+            // Emit final per-device result
+            viewModel.latencyTaskValue.value = taskValue(
+                "running",
+                JSONObject()
+                    .put("experimentId", this.experimentId)
+                    .put("experimentName", this.experimentName)
+                    .put("targetId", deviceId)
+                    .put("total_samples", totalSamplesExpected)
+                    .put("latency_samples", latencySamplesJson)
+                    .put("average_latency", avg)
+                    .put("minimum_latency", min)
+                    .put("maximum_latency", max)
+                    .put("standard_deviation_of_latency", sd)
+            )
+
+            // Mark device as finalized (CRITICAL FIX)
+            latencyFinalizedDevices.add(deviceId)
+        }
+
+        // Finish experiment only when ALL devices emitted once
+        if (latencyFinalizedDevices.size == latencyRepetitions.size &&
+            latencyFinalizedDevices.isNotEmpty()
+        ) {
+            isLatencyExperiment = false
+
             viewModel.latencyTaskValue.value = taskValue(
                 "finished",
                 JSONObject()
-                    .put("experimentType", "latency")
-                    .put("experimentResults", results)
             )
 
-            // cleanup
+            // Cleanup
             latencyTimings.clear()
             latencyValues.clear()
             latencyRepetitions.clear()
+            latencyFinalizedDevices.clear()
         }
     }
 
