@@ -25,7 +25,10 @@ data class DataLatencyExperiments(
     val targetId: String,
 
     @ColumnInfo(name = "strategy")
-    val strategy: Int,
+    val strategy: String,
+
+    @ColumnInfo(name = "emission_mode")
+    val emissionMode: String,
 
     @ColumnInfo(name = "total_samples")
     val totalSamples: Int,

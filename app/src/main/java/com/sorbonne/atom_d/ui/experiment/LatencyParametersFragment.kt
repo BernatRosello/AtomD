@@ -1,5 +1,6 @@
 package com.sorbonne.atom_d.ui.experiment
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -8,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.Switch
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -35,6 +37,7 @@ class LatencyParametersFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_latency_parameters, container, false)
     }
 
+    @SuppressLint("UseSwitchCompatOrMaterialCode")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -44,6 +47,10 @@ class LatencyParametersFragment : Fragment() {
         val experimentName = view.findViewById<EditText>(R.id.Latency_Experiment_Name)
         val experimentSamples = view.findViewById<EditText>(R.id.Latency_Experiment_Samples)
         val customName = view.findViewById<CheckBox>(R.id.Latency_Experiment_Custom_Name)
+        val experimentPingEmissionMode = view.findViewById<Switch>(R.id.Latency_Experiment_Emission_Mode)
+        var pingEmissionMode: Int
+        pingEmissionMode = 0
+        experimentPingEmissionMode.text = "SERIES"
         val submitButton = view.findViewById<Button>(R.id.Latency_Experiment_Submit)
 
         // -----------------------------------------------------
@@ -64,6 +71,19 @@ class LatencyParametersFragment : Fragment() {
         // -----------------------------------------------------
         customName.setOnClickListener {
             experimentName.isEnabled = customName.isChecked
+        }
+
+        // -----------------------------------------------------
+        // Enable/Disable emission mode switch
+        // -----------------------------------------------------
+        experimentPingEmissionMode.setOnClickListener {
+            if (experimentPingEmissionMode.isChecked) {
+                pingEmissionMode = 1
+                experimentPingEmissionMode.text = "PARALLEL"
+            } else {
+                pingEmissionMode = 0
+                experimentPingEmissionMode.text = "SERIES"
+            }
         }
 
         // -----------------------------------------------------
@@ -90,7 +110,8 @@ class LatencyParametersFragment : Fragment() {
             val latencyExperiment = LatencyExperiments(
                 id = 0,
                 expName = experimentTitle,
-                samples = mSamples
+                samples = mSamples,
+                emissionMode = pingEmissionMode
             )
 
             try {

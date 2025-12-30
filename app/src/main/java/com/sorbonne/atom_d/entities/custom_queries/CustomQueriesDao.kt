@@ -125,7 +125,7 @@ interface CustomQueriesDao {
         experiment_name,
         'LATENCY' AS type,
         samples AS attempts,
-        0 AS size
+        emission_mode AS size
     FROM latency_experiments
     """
     )

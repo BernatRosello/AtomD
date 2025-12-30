@@ -130,11 +130,12 @@ class D2DSDK {
                                 }
 
                                 if (json != null) {
-                                    // If incoming packet has "pong": true => it's a reply to a ping we sent
                                     experimentId = json.getLong("experimentId")
                                     experimentName = json.getString("experimentName")
                                     isLatencyExperiment = json.getBoolean("isLatencyExperiment")
+                                    val pingEmissionMode = json.getInt("emission_mode")
 
+                                    // If incoming packet has "pong": true => it's a reply to a ping we sent
                                     val isPong = json.optBoolean("pong", false)
                                     val sampleIndex = json.optInt("sample", -1)
                                     val totalSamples = json.optInt("total_samples", -1)
@@ -154,9 +155,26 @@ class D2DSDK {
                                                 val newCount = (latencyRepetitions[endPointId] ?: 0) + 1
                                                 latencyRepetitions[endPointId] = newCount
 
+                                                if (newCount < totalSamples && intToEmissionMode(pingEmissionMode) == EmissionMode.SERIES)
+                                                {
+                                                    val nextSampleIndex = sampleIndex+1
+                                                    val pingJson = JSONObject(translatedPayload)
+                                                    pingJson.remove("pong")
+                                                    pingJson.put("sample", nextSampleIndex)
+
+                                                    val startNs = System.nanoTime()
+                                                    // store start time for each device/sample pair
+                                                    latencyTimings[endPointId to nextSampleIndex] = startNs
+
+                                                    notifyToConnectedDevice(endPointId, messageBytes.tag, MessageBytes.INFO_PING, pingJson){
+                                                        val printN = nextSampleIndex+1
+                                                        Log.i(TAG, "Sent next sample PING to $endPointId ($printN/$totalSamples)")
+                                                    }
+                                                }
+
                                                 // check completion
                                                 // completion logic: when every device has collected 'totalNumberOfTask' samples and all data has been collected
-                                                recordCompletedExperimentIfFinished(totalSamples)
+                                                recordCompletedExperimentIfFinished(totalSamples, pingEmissionMode)
                                             }
                                             else
                                             {
@@ -744,7 +762,7 @@ class D2DSDK {
         }
     }
 
-    private fun recordCompletedExperimentIfFinished(totalSamplesExpected: Int) {
+    private fun recordCompletedExperimentIfFinished(totalSamplesExpected: Int, emissionMode: Int) {
         if (!isLatencyExperiment || latencyRepetitions.isEmpty()) return
 
         // Progress based on slowest device
@@ -786,6 +804,7 @@ class D2DSDK {
                     .put("experimentId", this.experimentId)
                     .put("experimentName", this.experimentName)
                     .put("targetId", deviceId)
+                    .put("emission_mode", intToEmissionMode(emissionMode).toString())
                     .put("total_samples", totalSamplesExpected)
                     .put("latency_samples", latencySamplesJson)
                     .put("average_latency", avg)
@@ -865,11 +884,32 @@ class D2DSDK {
         startDiscovery(Strategy.P2P_POINT_TO_POINT, lowPower)
     }
 
+    enum class EmissionMode {
+        SERIES,
+        PARALLEL
+    }
+
+    fun emissionModeToInt(mode: EmissionMode): Int {
+        return when(mode) {
+            EmissionMode.SERIES -> 0
+            EmissionMode.PARALLEL -> 1
+        }
+    }
+
+    fun intToEmissionMode(value: Int): EmissionMode? {
+        return when (value) {
+            0 -> EmissionMode.SERIES
+            1 -> EmissionMode.PARALLEL
+            else -> null
+        }
+    }
+
     fun performLatencyExperiment(
         targetDevices: List<String>,
         tag: Byte,
         experimentName: String,
-        samples: Int
+        samples: Int,
+        emissionMode: Int
     ) {
         if (targetDevices.isEmpty() || samples <= 0) return
 
@@ -891,31 +931,30 @@ class D2DSDK {
 
         // For each sample index, send a ping to the set of devices.
         // We use notifyToSetOfConnectedDevices to send MessageBytes.INFO_PING to all targets.
-        for (sampleIndex in 0 until samples) {
-            val startNs = System.nanoTime()
 
-            // Create JSON payload for this sample
-            val payloadJson = JSONObject()
-                .put("experimentId", experimentId)
-                .put("experimentName", experimentName)
-                .put("isLatencyExperiment", true)
-                .put("sample", sampleIndex)            // sample number
-                .put("total_samples", samples)        // total expected samples
-                .put("timing", startNs)
+        targetDevices.forEach { deviceId ->
+            val nInitialPings = if (intToEmissionMode(emissionMode) == EmissionMode.PARALLEL) samples else 1
+            for (sampleIndex in 0 until nInitialPings) {
+                val startNs = System.nanoTime()
 
-            // store start time for each device/sample pair
-            targetDevices.forEach { deviceId ->
+                // Create JSON payload for this sample
+                val payloadJson = JSONObject()
+                    .put("experimentId", experimentId)
+                    .put("experimentName", experimentName)
+                    .put("isLatencyExperiment", true)
+                    .put("emission_mode", emissionMode)
+                    .put("sample", sampleIndex)            // sample number
+                    .put("total_samples", samples)        // total expected samples
+                    .put("timing", startNs)
+
+                // store start time for each device/sample pair
                 latencyTimings[deviceId to sampleIndex] = startNs
-            }
 
-            // notify the full set with INFO_PING (each receiver will reply with a pong)
-            notifyToSetOfConnectedDevices(targetDevices, tag, MessageBytes.INFO_PING, payloadJson) {
-                Log.i(TAG, "sent latency ping sample=$sampleIndex to $targetDevices")
+                // notify the full set with INFO_PING (each receiver will reply with a pong)
+                notifyToSetOfConnectedDevices(targetDevices, tag, MessageBytes.INFO_PING, payloadJson) {
+                    Log.i(TAG, "sent latency ping sample=$sampleIndex to $targetDevices")
+                }
             }
-
-            // NOTE: We intentionally do not sleep here; we send samples back-to-back to match earlier experiments' style
-            // (if you want a gap between samples, add a small Thread.sleep(...) here)
-            //Thread.sleep(5)
         }
     }
 

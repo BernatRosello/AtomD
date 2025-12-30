@@ -108,13 +108,15 @@ object D2D {
         targetDevices: List<String>,
         tag: Byte,
         experimentName: String,
-        samples: Int
+        samples: Int,
+        emissionMode: Int
     ) {
         instance.sdk?.performLatencyExperiment(
             targetDevices,
             tag,
             experimentName,
-            samples
+            samples,
+            emissionMode
         )
     }
 

@@ -45,7 +45,7 @@ import java.io.File
 import java.io.RandomAccessFile
 
 
-class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
+class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener {
 
     private val TAG = DashboardFragment::class.simpleName
 
@@ -55,11 +55,11 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
         ExperimentViewModelFactory(DatabaseRepository(requireActivity().application))
     }
 
-    private var strategy: Strategy ?= null
+    private var strategy: Strategy? = null
     private var readableStrategy: Int = -1
 
-    private var discoveryState: Chip?= null
-    private var connectionState: Chip?= null
+    private var discoveryState: Chip? = null
+    private var connectionState: Chip? = null
 
     private lateinit var initD2D: Button
     private lateinit var startExperiment: Button
@@ -75,28 +75,37 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
     private lateinit var experimentProgressBar: ProgressBar
     private lateinit var taskProgressBar: ProgressBar
 
-    private var viewInstanceState: Bundle ?= null
+    private var viewInstanceState: Bundle? = null
 
-    private var targetEndDeviceId:String ?= null
+    private var targetEndDeviceId: String? = null
     private var experimentId: Long = 0
 
     private var isExperimentRunning = false
     private var isValidStrategy = false
 
-    private val adapterConnectedDevices = AdapterDoubleColumn(DoubleColumnViewHolder.DoubleColumnType.CheckBoxTextView, AdapterType.DynamicList)
-    private val adapterDiscoveredDevices = AdapterDoubleColumn(DoubleColumnViewHolder.DoubleColumnType.RadioButtonTextView, AdapterType.DynamicList)
+    private val adapterConnectedDevices = AdapterDoubleColumn(
+        DoubleColumnViewHolder.DoubleColumnType.CheckBoxTextView,
+        AdapterType.DynamicList
+    )
+    private val adapterDiscoveredDevices = AdapterDoubleColumn(
+        DoubleColumnViewHolder.DoubleColumnType.RadioButtonTextView,
+        AdapterType.DynamicList
+    )
     private val connectedDevices = mutableMapOf<String, String>()
     private val bandwidthInfo = mutableMapOf<String, Int>()
     private val deviceBandwidthQuality = mutableMapOf<String, Int>()
-    private val discoveredDevices = mutableMapOf<String,String>()
+    private val discoveredDevices = mutableMapOf<String, String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel = ViewModelProvider(this, DashboardViewModel.Factory(context, DatabaseRepository(requireActivity().application)))[DashboardViewModel::class.java]
+        viewModel = ViewModelProvider(
+            this,
+            DashboardViewModel.Factory(context, DatabaseRepository(requireActivity().application))
+        )[DashboardViewModel::class.java]
         viewModel.instance = (context as? MainActivity).guard { return }.d2d
         viewModel.deviceId = (context as? MainActivity).guard { return }.androidId
 
-        viewModel.connectedDevices.observe(requireActivity(), adapterConnectedDevices::submitList )
+        viewModel.connectedDevices.observe(requireActivity(), adapterConnectedDevices::submitList)
         viewModel.discoveredDevices.observe(requireActivity(), adapterDiscoveredDevices::submitList)
     }
 
@@ -131,7 +140,7 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
         val spinnerAdapter: ArrayAdapter<String> = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_item,
-            arrayOf("Strategies","P2P_POINT_TO_POINT", "P2P_STAR", "P2P_CLUSTER")
+            arrayOf("Strategies", "P2P_POINT_TO_POINT", "P2P_STAR", "P2P_CLUSTER")
         )
 
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -139,14 +148,18 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
         d2dStrategies.onItemSelectedListener = this
 
 
-        val dashboardAdapter = AdapterDoubleColumn(DoubleColumnViewHolder.DoubleColumnType.RadioButtonTextView, AdapterType.CustomQueries)
+        val dashboardAdapter = AdapterDoubleColumn(
+            DoubleColumnViewHolder.DoubleColumnType.RadioButtonTextView,
+            AdapterType.CustomQueries
+        )
         CustomRecyclerView(
             requireContext(),
             view.findViewById(R.id.dashboard_recyclerView),
             dashboardAdapter,
             CustomRecyclerView.CustomLayoutManager.LINEAR_LAYOUT
         ).getRecyclerView()
-        experimentViewModel.getAllExperimentsName().observe(requireActivity(), dashboardAdapter::submitList)
+        experimentViewModel.getAllExperimentsName()
+            .observe(requireActivity(), dashboardAdapter::submitList)
 
         discoveryState = view.findViewById(R.id.dashboard_status_discovering)
         connectionState = view.findViewById(R.id.dashboard_status_connected)
@@ -154,15 +167,19 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
         deviceId.text = viewModel.deviceId.toString()
 
         initD2D.setOnClickListener {
-            if(isValidStrategy && strategy != Strategy.P2P_CLUSTER) {
+            if (isValidStrategy && strategy != Strategy.P2P_CLUSTER) {
                 if (selectedRole.checkedButtonId == R.id.dashboard_role_disc || selectedRole.checkedButtonId == R.id.dashboard_role_adv) {
                     it.isEnabled = false
                     stopExperiment.isEnabled = true
 
-                    if(selectedRole.checkedButtonId == R.id.dashboard_role_disc) {
+                    if (selectedRole.checkedButtonId == R.id.dashboard_role_disc) {
 
-                        if(strategy == Strategy.P2P_POINT_TO_POINT) {
-                            viewModel.instance?.startDiscovery(strategy!!, false, automaticRequest = false)
+                        if (strategy == Strategy.P2P_POINT_TO_POINT) {
+                            viewModel.instance?.startDiscovery(
+                                strategy!!,
+                                false,
+                                automaticRequest = false
+                            )
                             MyAlertDialog.showDialog(
                                 parentFragmentManager,
                                 TAG!!,
@@ -172,19 +189,22 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                                 null,
                                 R.layout.dialog_recycleview,
                                 adapterDoubleColumn = adapterDiscoveredDevices,
-                                option1 = fun (recycleViewAdapter){
+                                option1 = fun(recycleViewAdapter) {
                                     recycleViewAdapter as AdapterDoubleColumn
-                                    if(recycleViewAdapter.getLastCheckedPosition() >= 0){
-                                        if(recycleViewAdapter.currentList.size > recycleViewAdapter.getLastCheckedPosition()){
-                                            val mEndPointInfo = (recycleViewAdapter.currentList[recycleViewAdapter.getLastCheckedPosition()]) as List<*>
-                                            viewModel.instance?.requestConnectionToEndPoint(mEndPointInfo[1].toString())
+                                    if (recycleViewAdapter.getLastCheckedPosition() >= 0) {
+                                        if (recycleViewAdapter.currentList.size > recycleViewAdapter.getLastCheckedPosition()) {
+                                            val mEndPointInfo =
+                                                (recycleViewAdapter.currentList[recycleViewAdapter.getLastCheckedPosition()]) as List<*>
+                                            viewModel.instance?.requestConnectionToEndPoint(
+                                                mEndPointInfo[1].toString()
+                                            )
                                             return
                                         }
                                     }
                                     viewModel.instance?.stopAll()
                                 }
                             )
-                        } else if (strategy == Strategy.P2P_STAR){
+                        } else if (strategy == Strategy.P2P_STAR) {
                             viewModel.instance?.startDiscovery(strategy!!, false)
                         }
                     } else {
@@ -198,7 +218,7 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                         }
                     }
                 }
-            } else if(isValidStrategy && strategy == Strategy.P2P_CLUSTER){
+            } else if (isValidStrategy && strategy == Strategy.P2P_CLUSTER) {
                 viewModel.instance?.startDiscovery(strategy!!, false)
                 viewModel.deviceId?.let { deviceName ->
                     viewModel.instance?.startAdvertising(
@@ -209,21 +229,23 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                     )
                 }
             } else {
-                Toast.makeText(requireContext(), "Strategy or Role not valid", Toast.LENGTH_LONG).show()
+                Toast.makeText(requireContext(), "Strategy or Role not valid", Toast.LENGTH_LONG)
+                    .show()
             }
         }
 
-        gps.setOnClickListener { it as Switch
-            if(it.isChecked){
+        gps.setOnClickListener {
+            it as Switch
+            if (it.isChecked) {
                 viewModel.instance?.enableLocationUpdate(requireActivity())
-            }else{
+            } else {
                 viewModel.instance?.disableLocationUpdate()
             }
         }
 
         startExperiment.setOnClickListener {
 
-            if(dashboardAdapter.currentList.isEmpty() || dashboardAdapter.getLastCheckedPosition() < 0){
+            if (dashboardAdapter.currentList.isEmpty() || dashboardAdapter.getLastCheckedPosition() < 0) {
                 Toast.makeText(requireContext(), "Experiment not valid", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
@@ -235,11 +257,12 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                 selectedExperiment as CustomQueriesDao.AllExperimentsName
                 val notificationParameters: JSONObject
 
-                when(selectedExperiment.type){
-                    "CHUNK" ->{
+                when (selectedExperiment.type) {
+                    "CHUNK" -> {
                         viewModel.instance?.sendSetOfChunks()
                     }
-                    "FILE" ->{
+
+                    "FILE" -> {
                         MyAlertDialog.showDialog(
                             parentFragmentManager,
                             TAG!!,
@@ -249,14 +272,15 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                             null,
                             R.layout.dialog_recycleview,
                             adapterDoubleColumn = adapterConnectedDevices,
-                            option1 = fun (recycleViewAdapter){
+                            option1 = fun(recycleViewAdapter) {
                                 recycleViewAdapter as AdapterDoubleColumn
-                                if(recycleViewAdapter.getCheckedBoxes().isEmpty()){
+                                if (recycleViewAdapter.getCheckedBoxes().isEmpty()) {
                                     it.isEnabled = true
                                     return
                                 }
 
-                                val testFile = File.createTempFile("testFile",null, requireContext().cacheDir)
+                                val testFile =
+                                    File.createTempFile("testFile", null, requireContext().cacheDir)
                                 val raf = RandomAccessFile(testFile, "rw")
                                 raf.setLength(selectedExperiment.size)
                                 raf.close()
@@ -267,11 +291,14 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                                         MessageTag.D2D_PERFORMANCE,
                                         MessageBytes.INFO_PACKET,
                                         JSONObject()
-                                            .put("experimentType","file")
-                                            .put("experimentName", selectedExperiment.experiment_name)
+                                            .put("experimentType", "file")
+                                            .put(
+                                                "experimentName",
+                                                selectedExperiment.experiment_name
+                                            )
                                             .put("fileSize", selectedExperiment.size)
                                             .put("fileTries", selectedExperiment.attempts)
-                                    ){
+                                    ) {
                                         performFileExperiment(
                                             recycleViewAdapter.getCheckedBoxes(),
                                             MessageTag.D2D_PERFORMANCE,
@@ -285,7 +312,8 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                         )
 //                        viewModel.instance?.performFileExperiment()
                     }
-                    "DISCOVERY" ->{
+
+                    "DISCOVERY" -> {
 
                         notificationParameters = setNotificationParametersDiscovery(
                             "request",
@@ -296,9 +324,14 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                         )
 
                         targetEndDeviceId?.let { endPointId ->
-                            viewModel.instance?.notifyToConnectedDevice(endPointId, MessageTag.D2D_PERFORMANCE,notificationParameters){}
+                            viewModel.instance?.notifyToConnectedDevice(
+                                endPointId,
+                                MessageTag.D2D_PERFORMANCE,
+                                notificationParameters
+                            ) {}
                         }
                     }
+
                     "LATENCY" -> {
 
                         MyAlertDialog.showDialog(
@@ -310,12 +343,12 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                             null,
                             R.layout.dialog_recycleview,
                             adapterDoubleColumn = adapterConnectedDevices,
-                            option1 = fun (recycleViewAdapter){
+                            option1 = fun(recycleViewAdapter) {
 
                                 recycleViewAdapter as AdapterDoubleColumn
                                 val targets = recycleViewAdapter.getCheckedBoxes()
 
-                                if(targets.isEmpty()){
+                                if (targets.isEmpty()) {
                                     startExperiment.isEnabled = true
                                     return
                                 }
@@ -324,18 +357,20 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                                     .put("experimentType", "latency")
                                     .put("experimentName", selectedExperiment.experiment_name)
                                     .put("latencySamples", selectedExperiment.attempts)
+                                    .put("emissionMode", selectedExperiment.size)
 
                                 viewModel.instance?.notifyToSetOfConnectedDevices(
                                     targets,
                                     MessageTag.D2D_PERFORMANCE,
                                     MessageBytes.INFO_PACKET,
                                     notificationParameters
-                                ){
+                                ) {
                                     viewModel.instance?.performLatencyExperiment(
                                         targets,
                                         MessageTag.D2D_PERFORMANCE,
                                         selectedExperiment.experiment_name,
-                                        selectedExperiment.attempts
+                                        selectedExperiment.attempts,
+                                        selectedExperiment.size.toInt()
                                     )
                                 }
                             }
@@ -355,7 +390,7 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
 //            Navigation.findNavController(view).navigate(action)
 //        }
 
-        if(viewInstanceState != null){
+        if (viewInstanceState != null) {
             isExperimentRunning = viewInstanceState!!.getBoolean("isExperimentRunning")
             viewModel.instance?.let {
                 setConnectedStatus(it.isConnected())
@@ -371,16 +406,19 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
     }
 
     override fun onItemSelected(adapterView: AdapterView<*>?, view: View?, index: Int, Id: Long) {
-         when(index){
-            1 ->{
+        when (index) {
+            1 -> {
                 strategy = Strategy.P2P_POINT_TO_POINT
             }
+
             2 -> {
                 strategy = Strategy.P2P_STAR
             }
+
             3 -> {
                 strategy = Strategy.P2P_CLUSTER
             }
+
             else -> {
                 readableStrategy = -1
                 isValidStrategy = false
@@ -390,6 +428,24 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
         readableStrategy = index
         isValidStrategy = true
     }
+
+    fun strategyIntToString(value: Int) : String {
+        when (value) {
+            1 -> {
+                return "P2P_POINT_TO_POINT"
+            }
+
+            2 -> {
+                return "P2P_STAR"
+            }
+
+            3 -> {
+                return "P2P_CLUSTER"
+            }
+        }
+        return "UNDEFINED connection strategy"
+    }
+
 
     override fun onNothingSelected(p0: AdapterView<*>?) {
         TODO("Not yet implemented")
@@ -564,13 +620,15 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
 
                 val experimentName = payloadParameters.getString("experimentName")
                 val latencySamples   = payloadParameters.getInt("latencySamples")
+                val emissionMode = payloadParameters.getInt("emissionMode")
 
                 // Store static experiment definition in DB (just like FILE & DISCOVERY)
                 experimentViewModel.insertLatencyExperiment(
                     LatencyExperiments(
                         0,
                         experimentName,
-                        latencySamples
+                        latencySamples,
+                        emissionMode
                     )
                 )
             }
@@ -668,7 +726,8 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                             experimentValueParameters.getString("experimentName"),
                             viewModel.deviceId!!,
                             experimentValueParameters.getString("targetId"),
-                            readableStrategy,
+                            strategyIntToString(readableStrategy),
+                            experimentValueParameters.getString("emission_mode"),
                             nSamples,
                             samples,
                             experimentValueParameters.getDouble("average_latency"),
@@ -678,7 +737,7 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
 
                         )
                     )
-                    when(bandwidthInfo[experimentValueParameters.getString("endPointId")]){
+                    when(bandwidthInfo[experimentValueParameters.getString("targetId")]){
                         BandwidthInfo.Quality.UNKNOWN -> {
                             bandwidthStatus.setColorFilter(ContextCompat.getColor(requireContext(), R.color.light_grey))
                         }

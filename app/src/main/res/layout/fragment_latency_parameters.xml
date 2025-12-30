@@ -74,6 +74,26 @@
             </LinearLayout>
 
             <!-- Submit -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:padding="9dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ping emission mode:"
+                    android:textSize="18sp" />
+
+                <Switch
+                    android:id="@+id/Latency_Experiment_Emission_Mode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="SERIES" />
+            </LinearLayout>
+
             <Button
                 android:id="@+id/Latency_Experiment_Submit"
                 android:layout_width="match_parent"
