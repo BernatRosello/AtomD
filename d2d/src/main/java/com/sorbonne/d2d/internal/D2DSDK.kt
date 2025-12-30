@@ -70,8 +70,11 @@ class D2DSDK {
 
     // Latency Experiment
     private var isLatencyExperiment = false
-    private var latencyRepetitions = mutableMapOf<String, Int>()
-    private val latencyTimings = mutableMapOf<Pair<String,Int>, Long>()
+    // how many samples have been received per device
+    private val latencyRepetitions = mutableMapOf<String, Int>()
+    // maps sample start times keyed by (deviceId, sampleIndex)
+    private val latencyTimings = mutableMapOf<Pair<String, Int>, Long>()
+    // collected latencies per device (nanoseconds)
     private val latencyValues = mutableMapOf<String, MutableList<Long>>()
 
 
@@ -115,31 +118,66 @@ class D2DSDK {
                             val messageBytes = MessageBytes(receivedPayload.asBytes())
                             val translatedPayload = String(messageBytes.payload, StandardCharsets.UTF_8)
                             // === LATENCY BLOCK ===
-                            if (isLatencyExperiment && messageBytes.type == MessageBytes.INFO_PACKET) {
+                            if (messageBytes.type == MessageBytes.INFO_PING) {
+                                // parse safely
+                                val json = try {
+                                    JSONObject(translatedPayload)
+                                } catch (e: Exception) {
+                                    null
+                                }
 
-                                val json = JSONObject(translatedPayload)
-                                val repetition = json.getInt("repetition")
-                                val deviceId = endPointId
-                                val key = deviceId to repetition
+                                if (json != null) {
+                                    // If incoming packet has "pong": true => it's a reply to a ping we sent
+                                    val isPong = json.optBoolean("pong", false)
+                                    val sampleIndex = json.optInt("sample", -1)
+                                    val totalSamples = json.optInt("total_samples", -1)
 
-                                val startTime = latencyTimings[key]
-                                if (startTime != null) {
-                                    val latency = System.nanoTime() - startTime
+                                    if (isPong) {
+                                        // Handle a PONG (a reply to our earlier ping)
+                                        if (isLatencyExperiment && sampleIndex >= 0) {
+                                            val start = latencyTimings[endPointId to sampleIndex]
 
-                                    // store
-                                    latencyValues.getOrPut(deviceId) { mutableListOf() }.add(latency)
-                                    latencyRepetitions[deviceId] = repetition + 1
+                                            if (start != null) {
+                                                val latencyNs = System.nanoTime() - start
 
-                                    // realtime UI update
-                                    viewModel.latencyTaskValue.value = taskValue(
-                                        "running",
-                                        JSONObject()
-                                            .put("endPointId", deviceId)
-                                            .put("repetition", repetition)
-                                            .put("latency", latency)
-                                    )
+                                                // store latency
+                                                latencyValues.getOrPut(endPointId) { mutableListOf() }.add(latencyNs)
 
-                                    checkLatencyExperimentCompletion()
+                                                // increment per-device received counter
+                                                val newCount = (latencyRepetitions[endPointId] ?: 0) + 1
+                                                latencyRepetitions[endPointId] = newCount
+
+                                                // realtime UI update (nanoseconds)
+                                                viewModel.latencyTaskValue.value = taskValue(
+                                                    "running",
+                                                    JSONObject()
+                                                        .put("endPointId", endPointId)
+                                                        .put("sample", sampleIndex)
+                                                        .put("latencyNs", latencyNs)
+                                                )
+
+                                                // check completion
+                                                // completion logic: when every device has collected 'totalNumberOfTask' samples
+                                                checkLatencyExperimentCompletionIfNeeded(totalSamples)
+                                            }
+                                            else
+                                            {
+                                                Log.e(TAG, "CRITICAL FAIL of LATENCY Test, couldn't match received Pong msg to a start timestamp! from device($endPointId)")
+                                            }
+                                        }
+                                        else
+                                        {
+                                            Log.e(TAG, "Latency experiment is NOT Running right now (Received extraneous PONG Message from device($endPointId)")
+                                        }
+                                    } else {
+                                        // It's an incoming PING request from a peer: reply with same JSON + pong=true
+                                        // Add pong flag and reply using notifyToSetOfConnectedDevices (single-target)
+                                        val pongJson = JSONObject(translatedPayload)
+                                        pongJson.put("pong", true)
+                                        notifyToConnectedDevice(endPointId, messageBytes.tag, MessageBytes.INFO_PING, pongJson){
+                                            Log.i(TAG, "Replied to $endPointId with PONG ($sampleIndex/$totalSamples)")
+                                        }
+                                    }
                                 }
                             }
                             if(messageBytes.type == MessageBytes.INFO_PACKET){
@@ -156,8 +194,6 @@ class D2DSDK {
                                 isFileExperiment = fileInfo.getBoolean("isFileExperiment")
                                 listOfFilesIds.add(fileInfo.getLong("payloadId"))
                                 totalNumberOfTask = fileInfo.getInt("totalNumberOfTask")
-
-
                             }
                         }
                         Payload.Type.FILE -> {
@@ -580,11 +616,11 @@ class D2DSDK {
         )
     }
 
-    fun notifyToConnectedDevice(endPointId: String, tag: Byte, notificationParameters: JSONObject, afterCompleteTask:(()->Any?)?){
+    fun notifyToConnectedDevice(endPointId: String, tag: Byte, messageType: Byte = MessageBytes.INFO_PACKET, notificationParameters: JSONObject, afterCompleteTask:(()->Any?)?){
         val messageBytes = MessageBytes()
 
         messageBytes.buildRegularPacket(
-            MessageBytes.INFO_PACKET,
+            messageType,
             tag,
             notificationParameters.toString().toByteArray(StandardCharsets.UTF_8)
         )
@@ -710,82 +746,66 @@ class D2DSDK {
         }
     }
 
+    private fun checkLatencyExperimentCompletionIfNeeded(totalSamplesExpected: Int) {
+        // If no devices targeted, nothing to do
+        if (!isLatencyExperiment || latencyRepetitions.isEmpty()) return
+
+        // compute min received samples across devices - experiment progresses when the slowest device has X samples
+        val minReceived = latencyRepetitions.values.minOrNull() ?: 0
+
+        // progress as percentage relative to totalSamplesExpected
+        val progress = if (totalSamplesExpected > 0) {
+            ((minReceived.toDouble() / totalSamplesExpected) * 100).toInt()
+        } else 0
+
+        viewModel.experimentProgress.value = progress
+
+        if (minReceived >= totalSamplesExpected) {
+            // experiment finished -> finalize results
+            isLatencyExperiment = false
+
+            // build results JSON per device (convert ns -> ms double)
+            val results = JSONObject()
+            latencyValues.forEach { (deviceId, nsList) ->
+                val msList = nsList.map { it / 1_000_000.0 }
+                val tries = msList.size
+                val avg = if (msList.isNotEmpty()) msList.average() else 0.0
+                val min = msList.minOrNull() ?: 0.0
+                val max = msList.maxOrNull() ?: 0.0
+                val sd = if (msList.isNotEmpty()) {
+                    kotlin.math.sqrt(msList.map { (it - avg) * (it - avg) }.sum() / tries)
+                } else 0.0
+
+                results.put(deviceId, JSONObject()
+                    .put("samples", tries)
+                    .put("avgLatency", avg)
+                    .put("minLatency", min)
+                    .put("maxLatency", max)
+                    .put("sdLatency", sd)
+                )
+            }
+
+            // publish finished result
+            viewModel.latencyTaskValue.value = taskValue(
+                "finished",
+                JSONObject()
+                    .put("experimentType", "latency")
+                    .put("experimentResults", results)
+            )
+
+            // cleanup
+            latencyTimings.clear()
+            latencyValues.clear()
+            latencyRepetitions.clear()
+        }
+    }
+
     fun isConnected(): Boolean{
         return !connectedDevices.isEmpty()
     }
 
     fun isDiscovering(): Boolean{
         return isDiscoveringAdvertising
-    }
-
-    private fun sendBytesToDevice(
-        endPointId: String,
-        tag: Byte,
-        messageType: Byte,
-        payload: ByteArray
-    ) {
-        val messageBytes = MessageBytes()
-        messageBytes.buildRegularPacket(
-            messageType,
-            tag,
-            payload
-        )
-
-        connectionClient?.sendPayload(
-            endPointId,
-            Payload.fromBytes(messageBytes.buffer)
-        )?.addOnFailureListener { e ->
-            Log.e(TAG, "Latency sendBytes failed: ${e.localizedMessage}")
-        }
-    }
-
-    private fun checkLatencyExperimentCompletion() {
-        val minRep = latencyRepetitions.values.minOrNull() ?: 0
-        val progress = ((minRep.toDouble() / totalNumberOfTask) * 100).toInt()
-
-        viewModel.experimentProgress.value = progress
-
-        if (progress == 100) finalizeLatencyExperiment()
-    }
-
-    private fun computeLatencyStats(list: List<Long>): JSONObject {
-        if (list.isEmpty()) return JSONObject()
-
-        val ms = list.map { it / 1_000_000.0 }
-        val avg = ms.average()
-        val min = ms.minOrNull() ?: avg
-        val max = ms.maxOrNull() ?: avg
-        val sd = kotlin.math.sqrt(
-            ms.sumOf { (it - avg) * (it - avg) } / ms.size
-        )
-
-        return JSONObject()
-            .put("samples", list.size)
-            .put("avgMs", avg)
-            .put("minMs", min)
-            .put("maxMs", max)
-            .put("sdMs", sd)
-    }
-
-    private fun finalizeLatencyExperiment() {
-        isLatencyExperiment = false
-
-        val results = JSONObject()
-        latencyValues.forEach { (device, values) ->
-            results.put(device, computeLatencyStats(values))
-        }
-
-        viewModel.latencyTaskValue.value = taskValue(
-            "finished",
-            JSONObject()
-                .put("experimentType", "latency")
-                .put("results", results)
-        )
-
-        // cleanup
-        latencyTimings.clear()
-        latencyValues.clear()
-        latencyRepetitions.clear()
     }
 
     fun sendSetOfChunks(){
@@ -832,57 +852,55 @@ class D2DSDK {
         targetDevices: List<String>,
         tag: Byte,
         experimentName: String,
-        repetitions: Int
+        samples: Int
     ) {
+        if (targetDevices.isEmpty() || samples <= 0) return
+
+        // initialize experiment state
         isLatencyExperiment = true
-        experimentId = System.currentTimeMillis()
+        this.experimentId = System.currentTimeMillis()
         this.experimentName = experimentName
-        this.totalNumberOfTask = repetitions
+        this.totalNumberOfTask = samples
 
         latencyTimings.clear()
-        latencyRepetitions.clear()
         latencyValues.clear()
+        latencyRepetitions.clear()
 
-        // Init counters
-        targetDevices.forEach { id -> latencyRepetitions[id] = 0 }
+        // init counters per device
+        targetDevices.forEach { id ->
+            latencyRepetitions[id] = 0
+            latencyValues[id] = mutableListOf()
+        }
 
-        for (rep in 0 until repetitions) {
+        // For each sample index, send a ping to the set of devices.
+        // We use notifyToSetOfConnectedDevices to send MessageBytes.INFO_PING to all targets.
+        for (sampleIndex in 0 until samples) {
             val startNs = System.nanoTime()
-            targetDevices.forEach { endPointId ->
-                latencyTimings[endPointId to rep] = startNs
 
-                val payload = JSONObject()
-                    .put("experimentId", experimentId)
-                    .put("experimentName", experimentName)
-                    .put("repetition", rep)
-                    .put("timing", startNs)
+            // Create JSON payload for this sample
+            val payloadJson = JSONObject()
+                .put("experimentId", experimentId)
+                .put("experimentName", experimentName)
+                .put("sample", sampleIndex)            // sample number
+                .put("total_samples", samples)        // total expected samples
+                .put("timing", startNs)
 
-                sendBytesToDevice(
-                    endPointId,
-                    tag,
-                    MessageBytes.INFO_PACKET,
-                    payload.toString().toByteArray()
-                )
+            // store start time for each device/sample pair
+            targetDevices.forEach { deviceId ->
+                latencyTimings[deviceId to sampleIndex] = startNs
             }
+
+            // notify the full set with INFO_PING (each receiver will reply with a pong)
+            notifyToSetOfConnectedDevices(targetDevices, tag, MessageBytes.INFO_PING, payloadJson) {
+                Log.i(TAG, "sent latency ping sample=$sampleIndex to $targetDevices")
+            }
+
+            // NOTE: We intentionally do not sleep here; we send samples back-to-back to match earlier experiments' style
+            // (if you want a gap between samples, add a small Thread.sleep(...) here)
+            //Thread.sleep(5)
         }
     }
 
-    private fun sendLatencyPing(
-        endPointId: String,
-        tag: Byte,
-        experimentId: Long,
-        experimentName: String,
-        repetition: Int,
-        startTime: Long
-    ) {
-        val payload = JSONObject()
-            .put("experimentId", experimentId)
-            .put("experimentName", experimentName)
-            .put("repetition", repetition)
-            .put("timing", startTime)
-
-        sendBytesToDevice(endPointId, tag, MessageBytes.INFO_PACKET, payload.toString().toByteArray())
-    }
 
     fun disconnectFromDevice(endPointId: String){
         connectionClient?.let {

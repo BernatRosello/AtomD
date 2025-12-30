@@ -22,8 +22,8 @@ data class LatencyExperiments(
     @ColumnInfo(name = "experiment_name")
     val expName: String,
 
-    @ColumnInfo(name = "tries")
-    val tries: Int,
+    @ColumnInfo(name = "samples")
+    val samples: Int,
 
     @ColumnInfo(name = "average_latency")
     val avgLatency: Double,

@@ -124,7 +124,7 @@ interface CustomQueriesDao {
     SELECT
         experiment_name,
         'LATENCY' AS type,
-        tries AS attempts,
+        samples AS attempts,
         0 AS size
     FROM latency_experiments
     """

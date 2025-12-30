@@ -54,6 +54,10 @@ The tables corresponding to the database are listed below.
     - file_size
     - number_of_tries
 
+- **latency_experiments**
+  - experiment_name
+  - samples
+
 - **connection_attempts**
 	-  experiment_name
 	-  number_of_repetitions

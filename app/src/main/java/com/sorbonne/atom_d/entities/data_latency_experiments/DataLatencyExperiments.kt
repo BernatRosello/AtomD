@@ -22,11 +22,11 @@ data class DataLatencyExperiments(
     @ColumnInfo(name = "target_id")
     val targetId: String,
 
-    @ColumnInfo(name = "repetition")
-    val repetition: Int,
+    @ColumnInfo(name = "sample")
+    val sample: Int,
 
-    @ColumnInfo(name = "total_repetitions")
-    val pingsToDo: Int,
+    @ColumnInfo(name = "total_samples")
+    val totalSamples: Int,
 
     @ColumnInfo(name = "latency")
     val latency: Double,

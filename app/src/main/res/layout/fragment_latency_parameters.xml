@@ -50,7 +50,7 @@
                     android:inputType="text" />
             </LinearLayout>
 
-            <!-- Number of tries -->
+            <!-- Number of samples -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -64,7 +64,7 @@
                     android:textSize="18sp" />
 
                 <EditText
-                    android:id="@+id/Latency_Experiment_Tries"
+                    android:id="@+id/Latency_Experiment_Samples"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"

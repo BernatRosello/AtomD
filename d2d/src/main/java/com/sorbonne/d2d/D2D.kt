@@ -1,15 +1,11 @@
 package com.sorbonne.d2d
 
 import android.app.Activity
-import android.content.Context
-import androidx.annotation.RequiresPermission
 import androidx.lifecycle.LifecycleOwner
-import com.google.android.gms.nearby.connection.Payload
 import com.sorbonne.d2d.internal.D2DSDK
 import com.google.android.gms.nearby.connection.Strategy
 import org.json.JSONObject
 import java.io.File
-import java.util.Objects
 
 object D2D {
     private var sdk: D2DSDK ?= null
@@ -112,13 +108,13 @@ object D2D {
         targetDevices: List<String>,
         tag: Byte,
         experimentName: String,
-        repetitions: Int
+        samples: Int
     ) {
         instance.sdk?.performLatencyExperiment(
             targetDevices,
             tag,
             experimentName,
-            repetitions
+            samples
         )
     }
 

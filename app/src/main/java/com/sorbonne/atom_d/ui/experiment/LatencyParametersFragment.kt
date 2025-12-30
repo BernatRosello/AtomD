@@ -42,7 +42,7 @@ class LatencyParametersFragment : Fragment() {
         // UI References
         // -----------------------------------------------------
         val experimentName = view.findViewById<EditText>(R.id.Latency_Experiment_Name)
-        val experimentTries = view.findViewById<EditText>(R.id.Latency_Experiment_Tries)
+        val experimentSamples = view.findViewById<EditText>(R.id.Latency_Experiment_Samples)
         val customName = view.findViewById<CheckBox>(R.id.Latency_Experiment_Custom_Name)
         val submitButton = view.findViewById<Button>(R.id.Latency_Experiment_Submit)
 
@@ -71,11 +71,11 @@ class LatencyParametersFragment : Fragment() {
         // -----------------------------------------------------
         submitButton.setOnClickListener {
 
-            var mTries = 1
-            if (experimentTries.text.isNotEmpty()) {
-                mTries = experimentTries.text.toString().toIntOrNull() ?: 1
+            var mSamples = 1
+            if (experimentSamples.text.isNotEmpty()) {
+                mSamples = experimentSamples.text.toString().toIntOrNull() ?: 1
             }
-            if (mTries <= 0) mTries = 1
+            if (mSamples <= 0) mSamples = 1
 
             // Automatic or custom name
             val experimentTitle: String = if (customName.isChecked &&
@@ -83,14 +83,14 @@ class LatencyParametersFragment : Fragment() {
             ) {
                 experimentName.text.toString()
             } else {
-                "Latency experiment - N $mTries"
+                "Latency experiment - N $mSamples"
             }
 
             // Create unmeasured latency experiment
             val latencyExperiment = LatencyExperiments(
                 id = 0,
                 expName = experimentTitle,
-                tries = mTries,
+                samples = mSamples,
                 avgLatency = 0.0,
                 minLatency = 0.0,
                 maxLatency = 0.0,
@@ -102,7 +102,7 @@ class LatencyParametersFragment : Fragment() {
 
                 // Reset UI
                 experimentName.setText("")
-                experimentTries.setText("")
+                experimentSamples.setText("")
                 customName.isChecked = false
                 experimentName.isEnabled = false
 

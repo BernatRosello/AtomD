@@ -324,7 +324,7 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                                     .put("experimentType", "latency")
                                     .put("experimentMessageType", "request")
                                     .put("experimentName", selectedExperiment.experiment_name)
-                                    .put("latencyTries", selectedExperiment.attempts)
+                                    .put("latencySamples", selectedExperiment.attempts)
 
                                 viewModel.instance?.notifyToSetOfConnectedDevices(
                                     targets,
@@ -564,14 +564,14 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
             "latency" -> {
 
                 val experimentName = payloadParameters.getString("experimentName")
-                val latencyTries   = payloadParameters.getInt("latencyTries")
+                val latencySamples   = payloadParameters.getInt("latencySamples")
 
                 // Store static experiment definition in DB (just like FILE & DISCOVERY)
                 experimentViewModel.insertConnectionAttemptExperiment(
                     ConnectionAttempts(
                         0,
                         experimentName,
-                        latencyTries
+                        latencySamples
                     )
                 )
 
@@ -597,7 +597,7 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                             .put("experimentType", "latency")
                             .put("experimentMessageType", "replay")
                             .put("experimentName", experimentName)
-                            .put("latencyTries", latencyTries)
+                            .put("latencySamples", latencySamples)
 
                         viewModel.instance?.notifyToSetOfConnectedDevices(
                             checked,
@@ -610,7 +610,7 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                                 checked,
                                 MessageTag.D2D_PERFORMANCE,
                                 experimentName,
-                                latencyTries
+                                latencySamples
                             )
                         }
                     }
@@ -704,8 +704,8 @@ class DashboardFragment : Fragment(), D2DListener, OnItemSelectedListener  {
                             experimentValueParameters.getString("experimentName"),
                             viewModel.deviceId!!,
                             experimentValueParameters.getString("targetId"),
-                            experimentValueParameters.getInt("repetition"),
-                            experimentValueParameters.getInt("total_repetitions"),
+                            experimentValueParameters.getInt("sample"),
+                            experimentValueParameters.getInt("total_samples"),
                             experimentValueParameters.getDouble("latency"),
                             readableStrategy
                         )
