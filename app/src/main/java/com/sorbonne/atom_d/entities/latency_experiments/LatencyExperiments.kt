@@ -15,9 +15,8 @@ import androidx.room.PrimaryKey
     ]
 )
 data class LatencyExperiments(
-
     @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    val id: Int,
 
     @ColumnInfo(name = "experiment_name")
     val expName: String,

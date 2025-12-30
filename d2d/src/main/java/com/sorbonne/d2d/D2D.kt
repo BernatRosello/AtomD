@@ -46,7 +46,7 @@ object D2D {
     }
 
     fun notifyToConnectedDevice(endPointId: String, tag: Byte, notificationParameters: JSONObject, afterCompleteTask:(()->Any?)? = null){
-        instance.sdk?.notifyToConnectedDevice(endPointId, tag, notificationParameters, afterCompleteTask)
+        instance.sdk?.notifyToConnectedDevice(endPointId, tag, notificationParameters = notificationParameters, afterCompleteTask = afterCompleteTask)
     }
 
     fun notifyToSetOfConnectedDevices(setOfDevices: List<String>, tag: Byte, messageType: Byte, notificationParameters: JSONObject, afterCompleteTask:(()->Any?)?){

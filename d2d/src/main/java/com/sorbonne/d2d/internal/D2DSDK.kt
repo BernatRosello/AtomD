@@ -128,6 +128,10 @@ class D2DSDK {
 
                                 if (json != null) {
                                     // If incoming packet has "pong": true => it's a reply to a ping we sent
+                                    experimentId = json.getLong("experimentId")
+                                    experimentName = json.getString("experimentName")
+                                    isLatencyExperiment = json.getBoolean("isLatencyExperiment")
+
                                     val isPong = json.optBoolean("pong", false)
                                     val sampleIndex = json.optInt("sample", -1)
                                     val totalSamples = json.optInt("total_samples", -1)
@@ -881,6 +885,7 @@ class D2DSDK {
             val payloadJson = JSONObject()
                 .put("experimentId", experimentId)
                 .put("experimentName", experimentName)
+                .put("isLatencyExperiment", true)
                 .put("sample", sampleIndex)            // sample number
                 .put("total_samples", samples)        // total expected samples
                 .put("timing", startNs)

@@ -8,8 +8,7 @@ import androidx.room.Query
 
 @Dao
 interface LatencyExperimentsDao {
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(result: LatencyExperiments)
 
     @Query("DELETE FROM latency_experiments")
