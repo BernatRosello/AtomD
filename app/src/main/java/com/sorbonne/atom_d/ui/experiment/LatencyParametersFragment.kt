@@ -51,6 +51,7 @@ class LatencyParametersFragment : Fragment() {
         var pingEmissionMode: Int
         pingEmissionMode = 0
         experimentPingEmissionMode.text = "SERIES"
+        experimentPingEmissionMode.isChecked = false
         val submitButton = view.findViewById<Button>(R.id.Latency_Experiment_Submit)
 
         // -----------------------------------------------------
@@ -103,7 +104,8 @@ class LatencyParametersFragment : Fragment() {
             ) {
                 experimentName.text.toString()
             } else {
-                "Latency experiment - N $mSamples"
+                val modeText = experimentPingEmissionMode.text
+                "RTT - Ping Emission: $modeText - N.Pings: $mSamples"
             }
 
             // Create unmeasured latency experiment
